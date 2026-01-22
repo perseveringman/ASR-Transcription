@@ -1,0 +1,10 @@
+{
+  "id": "obsidian-asr",
+  "name": "ASR Voice Transcription",
+  "version": "1.0.0",
+  "minAppVersion": "0.15.0",
+  "description": "Voice transcription for Obsidian using Zhipu AI GLM-ASR-2512 model.",
+  "author": "Ryan B. Zhou",
+  "authorUrl": "https://github.com/ryanbzhou",
+  "isDesktopOnly": false
+}
