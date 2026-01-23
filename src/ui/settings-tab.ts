@@ -78,6 +78,30 @@ export class ASRSettingTab extends PluginSettingTab {
                     await this.plugin.saveSettings();
                 }));
 
+        containerEl.createEl('h3', { text: 'Storage Settings' });
+
+        new Setting(containerEl)
+            .setName('Audio Save Folder')
+            .setDesc('Folder where recorded audio files will be saved')
+            .addText(text => text
+                .setPlaceholder('/')
+                .setValue(this.plugin.settings.audioSaveFolder)
+                .onChange(async (value) => {
+                    this.plugin.settings.audioSaveFolder = value;
+                    await this.plugin.saveSettings();
+                }));
+
+        new Setting(containerEl)
+            .setName('Transcription Note Folder')
+            .setDesc('Folder where new transcription notes will be created')
+            .addText(text => text
+                .setPlaceholder('/')
+                .setValue(this.plugin.settings.newNoteFolder)
+                .onChange(async (value) => {
+                    this.plugin.settings.newNoteFolder = value;
+                    await this.plugin.saveSettings();
+                }));
+
         containerEl.createEl('h3', { text: 'Transcription Options' });
 
         new Setting(containerEl)

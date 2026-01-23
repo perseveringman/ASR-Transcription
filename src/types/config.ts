@@ -10,6 +10,7 @@ export interface PluginSettings {
     addTimestamp: boolean;
     addSeparator: boolean;
     newNoteFolder: string;
+    audioSaveFolder: string;
     hotwords: string[];
     contextPrompt: string;
     debugLogging: boolean;
@@ -23,6 +24,7 @@ export const DEFAULT_SETTINGS: PluginSettings = {
     addTimestamp: true,
     addSeparator: true,
     newNoteFolder: '/',
+    audioSaveFolder: '/',
     hotwords: [],
     contextPrompt: '',
     debugLogging: false,
