@@ -12,7 +12,7 @@ A voice transcription plugin for Obsidian using Zhipu AI's GLM-ASR-2512 model.
 
 ## Installation
 
-1. Create a folder named `obsidian-asr` in your vault's `.obsidian/plugins/` directory.
+1. Create a folder named `ASR-Transcription` in your vault's `.obsidian/plugins/` directory.
 2. Copy `main.js`, `manifest.json`, and `styles.css` into that folder.
 3. Enable the plugin in Obsidian's community plugins settings.
 
