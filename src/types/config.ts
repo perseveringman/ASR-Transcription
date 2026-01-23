@@ -9,7 +9,6 @@ export interface PluginSettings {
     insertPosition: InsertPosition;
     addTimestamp: boolean;
     addSeparator: boolean;
-    newNoteFolder: string;
     audioSaveFolder: string;
     hotwords: string[];
     contextPrompt: string;
@@ -25,7 +24,6 @@ export const DEFAULT_SETTINGS: PluginSettings = {
     insertPosition: InsertPosition.CURSOR,
     addTimestamp: true,
     addSeparator: true,
-    newNoteFolder: '/',
     audioSaveFolder: '/',
     hotwords: [],
     contextPrompt: '',
