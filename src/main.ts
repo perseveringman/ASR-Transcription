@@ -100,51 +100,135 @@ export default class ASRPlugin extends Plugin {
     }
 
     /**
-     * Handle transcription of an audio file from context menu
-     * Always creates a new note with the transcription
+     * Unified transcription processing logic
+     * Handles chunking based on service constraints and result aggregation
      */
-    async handleAudioFileTranscription(file: TFile) {
+    private async processTranscription(audio: Blob | TFile): Promise<string> {
         const transcriptionService = TranscriptionServiceFactory.create(this.settings);
-        const notice = new Notice(`Transcribing ${file.name}...`, 0);
+        const constraints = transcriptionService.getConstraints();
+        const notice = new Notice(`Preparing transcription...`, 0);
 
         try {
-            const arrayBuffer = await this.app.vault.readBinary(file);
-            const blob = new Blob([arrayBuffer], { type: this.getMimeType(file) });
+            let arrayBuffer: ArrayBuffer;
+            let blob: Blob;
+            let extension = '';
+
+            if (audio instanceof TFile) {
+                arrayBuffer = await this.app.vault.readBinary(audio);
+                extension = audio.extension.toLowerCase();
+                blob = new Blob([arrayBuffer], { type: this.getMimeType(audio) });
+            } else {
+                arrayBuffer = await audio.arrayBuffer();
+                blob = audio;
+                if (audio instanceof File) {
+                    extension = audio.name.split('.').pop()?.toLowerCase() || '';
+                } else {
+                    extension = blob.type.includes('wav') ? 'wav' : (blob.type.includes('mp4') || blob.type.includes('m4a') ? 'm4a' : 'mp3');
+                }
+            }
             
-            // Check duration
+            // Check duration for chunking
             const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
-            const audioBuffer = await audioContext.decodeAudioData(arrayBuffer.slice(0)); // Copy buffer as decodeAudioData consumes it
+            const audioBuffer = await audioContext.decodeAudioData(arrayBuffer.slice(0)); 
             const duration = audioBuffer.duration;
             await audioContext.close();
 
             let fullText = '';
 
-            if (duration > 30) {
-                notice.setMessage(`Splitting ${file.name} into chunks...`);
-                const chunks = await AudioConverter.splitAndConvert(blob, 30);
+            // Chunk if duration or size exceeds limits
+            const needsChunking = duration > constraints.maxDurationSeconds || blob.size > constraints.maxFileSizeBytes;
+
+            if (needsChunking) {
+                notice.setMessage(`Splitting audio into chunks...`);
+                // Use the smaller of the two constraints to be safe
+                const chunkDuration = Math.min(constraints.maxDurationSeconds, 30); // Default to 30s if max is huge, for progress feedback
+                const chunks = await AudioConverter.splitAndConvert(blob, chunkDuration);
                 
                 for (let i = 0; i < chunks.length; i++) {
-                    notice.setMessage(`Transcribing ${file.name}: chunk ${i + 1}/${chunks.length}...`);
+                    notice.setMessage(`Transcribing: chunk ${i + 1}/${chunks.length}...`);
                     const result = await transcriptionService.transcribe(chunks[i]);
                     fullText += (fullText ? ' ' : '') + result.text.trim();
                 }
             } else {
-                let blobToUpload = blob;
-                if (file.extension.toLowerCase() === 'm4a') {
-                    notice.setMessage(`Converting ${file.name} to WAV...`);
-                    blobToUpload = await AudioConverter.convertToWav(blob);
+                let audioToUpload = blob;
+                
+                if (extension === 'm4a') {
+                    notice.setMessage(`Converting to WAV...`);
+                    audioToUpload = await AudioConverter.convertToWav(blob);
                 }
 
-                const result = await transcriptionService.transcribe(blobToUpload);
+                const result = await transcriptionService.transcribe(audioToUpload);
                 fullText = result.text;
             }
 
-            // Always create a new note for context menu transcription
-            await this.createTranscriptionNote(fullText, file);
             notice.hide();
-            new Notice(`Transcription of ${file.name} complete!`);
+            return fullText;
         } catch (err: any) {
             notice.hide();
+            throw err;
+        }
+    }
+
+    /**
+     * Handle transcription of an audio file from context menu
+     * Always creates a new note with the transcription
+     */
+    async handleAudioFileTranscription(file: TFile) {
+        try {
+            const fullText = await this.processTranscription(file);
+            await this.createTranscriptionNote(fullText, file);
+            new Notice(`Transcription of ${file.name} complete!`);
+        } catch (err: any) {
+            new Notice(`Transcription of ${file.name} failed: ${err.message}`);
+            console.error('ASR Plugin error:', err);
+        }
+    }
+
+    async handleTranscription(audio: Blob | File) {
+        const notice = new Notice('Processing audio...', 0);
+
+        try {
+            // 1. Save the audio file if it's a new recording (Blob)
+            let audioFile: TFile | null = null;
+            if (!(audio instanceof File)) {
+                const timestamp = moment().format('YYYYMMDD-HHmmss');
+                const extension = audio.type.includes('wav') ? 'wav' : 'mp3';
+                const fileName = `Recording-${timestamp}.${extension}`;
+                const folder = this.settings.audioSaveFolder || '/';
+                
+                // Ensure folder exists
+                if (folder !== '/') {
+                    const folderExists = await this.app.vault.adapter.exists(folder);
+                    if (!folderExists) {
+                        await this.app.vault.createFolder(folder);
+                    }
+                }
+                
+                const path = folder === '/' ? fileName : `${folder}/${fileName}`;
+                const arrayBuffer = await audio.arrayBuffer();
+                audioFile = await this.app.vault.createBinary(path, arrayBuffer);
+                new Notice(`Audio saved: ${fileName}`);
+            }
+
+            // 2. Process transcription
+            const fullText = await this.processTranscription(audio);
+
+            await this.textInserter.insert(fullText, audioFile || undefined);
+            notice.hide();
+            new Notice('Transcription complete!');
+        } catch (err: any) {
+            notice.hide();
+            new Notice(`Transcription failed: ${err.message}`);
+            console.error('ASR Plugin error:', err);
+        }
+    }
+
+    async handleFileTranscription(file: TFile) {
+        try {
+            const fullText = await this.processTranscription(file);
+            await this.textInserter.insert(fullText, file);
+            new Notice(`Transcription of ${file.name} complete!`);
+        } catch (err: any) {
             new Notice(`Transcription of ${file.name} failed: ${err.message}`);
             console.error('ASR Plugin error:', err);
         }
@@ -240,120 +324,6 @@ export default class ASRPlugin extends Plugin {
             result = result.replace(new RegExp(key, 'g'), value);
         }
         return result;
-    }
-
-    async handleTranscription(audio: Blob | File) {
-        const transcriptionService = TranscriptionServiceFactory.create(this.settings);
-        const notice = new Notice('Processing audio...', 0);
-
-        try {
-            // 1. Save the audio file if it's a new recording (Blob)
-            let audioFile: TFile | null = null;
-            if (!(audio instanceof File)) {
-                const timestamp = moment().format('YYYYMMDD-HHmmss');
-                const extension = audio.type.includes('wav') ? 'wav' : 'mp3';
-                const fileName = `Recording-${timestamp}.${extension}`;
-                const folder = this.settings.audioSaveFolder || '/';
-                
-                // Ensure folder exists
-                if (folder !== '/') {
-                    const folderExists = await this.app.vault.adapter.exists(folder);
-                    if (!folderExists) {
-                        await this.app.vault.createFolder(folder);
-                    }
-                }
-                
-                const path = folder === '/' ? fileName : `${folder}/${fileName}`;
-                const arrayBuffer = await audio.arrayBuffer();
-                audioFile = await this.app.vault.createBinary(path, arrayBuffer);
-                new Notice(`Audio saved: ${fileName}`);
-            }
-
-            // 2. Process transcription (rest of the logic)
-            const arrayBuffer = await audio.arrayBuffer();
-            const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
-            const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
-            const duration = audioBuffer.duration;
-            await audioContext.close();
-
-            let fullText = '';
-            
-            if (duration > 30) {
-                notice.setMessage(`Splitting audio into chunks...`);
-                const chunks = await AudioConverter.splitAndConvert(audio, 30);
-                
-                for (let i = 0; i < chunks.length; i++) {
-                    notice.setMessage(`Transcribing chunk ${i + 1} of ${chunks.length}...`);
-                    const result = await transcriptionService.transcribe(chunks[i]);
-                    fullText += (fullText ? ' ' : '') + result.text.trim();
-                }
-            } else {
-                let audioToUpload = audio;
-                const isM4A = audio.type.includes('m4a') || audio.type.includes('mp4') || (audio instanceof File && audio.name.endsWith('.m4a'));
-                
-                if (isM4A) {
-                    notice.setMessage('Converting m4a to WAV...');
-                    audioToUpload = await AudioConverter.convertToWav(audio);
-                }
-                
-                const result = await transcriptionService.transcribe(audioToUpload);
-                fullText = result.text;
-            }
-
-            await this.textInserter.insert(fullText, audioFile || undefined);
-            notice.hide();
-            new Notice('Transcription complete!');
-        } catch (err: any) {
-            notice.hide();
-            new Notice(`Transcription failed: ${err.message}`);
-            console.error('ASR Plugin error:', err);
-        }
-    }
-
-    async handleFileTranscription(file: TFile) {
-        const transcriptionService = TranscriptionServiceFactory.create(this.settings);
-        const notice = new Notice(`Processing ${file.name}...`, 0);
-
-        try {
-            const arrayBuffer = await this.app.vault.readBinary(file);
-            const blob = new Blob([arrayBuffer], { type: this.getMimeType(file) });
-            
-            // Check duration
-            const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
-            const audioBuffer = await audioContext.decodeAudioData(arrayBuffer.slice(0)); // Copy buffer as decodeAudioData consumes it
-            const duration = audioBuffer.duration;
-            await audioContext.close();
-
-            let fullText = '';
-
-            if (duration > 30) {
-                notice.setMessage(`Splitting ${file.name} into chunks...`);
-                const chunks = await AudioConverter.splitAndConvert(blob, 30);
-                
-                for (let i = 0; i < chunks.length; i++) {
-                    notice.setMessage(`Transcribing ${file.name}: chunk ${i + 1}/${chunks.length}...`);
-                    const result = await transcriptionService.transcribe(chunks[i]);
-                    fullText += (fullText ? ' ' : '') + result.text.trim();
-                }
-            } else {
-                let blobToUpload = blob;
-                if (file.extension.toLowerCase() === 'm4a') {
-                    notice.setMessage(`Converting ${file.name} to WAV...`);
-                    blobToUpload = await AudioConverter.convertToWav(blob);
-                }
-
-                const result = await transcriptionService.transcribe(blobToUpload);
-                fullText = result.text;
-            }
-
-            await this.textInserter.insert(fullText, file);
-            notice.hide();
-            new Notice(`Transcription of ${file.name} complete!`);
-        } catch (err: any) {
-            notice.hide();
-            new Notice(`Transcription of ${file.name} failed: ${err.message}`);
-            console.error('ASR Plugin error:', err);
-        }
     }
 
     private getMimeType(file: TFile): string {

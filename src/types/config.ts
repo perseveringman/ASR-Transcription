@@ -4,8 +4,16 @@ export enum InsertPosition {
     NEW_NOTE = 'new-note'
 }
 
+export enum TranscriptionProvider {
+    ZHIPU = 'zhipu',
+    VOLCENGINE = 'volcengine'
+}
+
 export interface PluginSettings {
+    transcriptionProvider: TranscriptionProvider;
     zhipuApiKey: string;
+    volcengineAppId: string;
+    volcengineAccessToken: string;
     insertPosition: InsertPosition;
     addTimestamp: boolean;
     addSeparator: boolean;
@@ -20,7 +28,10 @@ export interface PluginSettings {
 }
 
 export const DEFAULT_SETTINGS: PluginSettings = {
+    transcriptionProvider: TranscriptionProvider.ZHIPU,
     zhipuApiKey: '',
+    volcengineAppId: '',
+    volcengineAccessToken: '',
     insertPosition: InsertPosition.CURSOR,
     addTimestamp: true,
     addSeparator: true,

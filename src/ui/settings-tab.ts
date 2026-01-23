@@ -1,6 +1,6 @@
 import { App, PluginSettingTab, Setting } from 'obsidian';
 import ASRPlugin from '../main';
-import { InsertPosition } from '../types/config';
+import { InsertPosition, TranscriptionProvider } from '../types/config';
 
 export class ASRSettingTab extends PluginSettingTab {
     plugin: ASRPlugin;
@@ -18,16 +18,56 @@ export class ASRSettingTab extends PluginSettingTab {
         containerEl.createEl('h2', { text: 'ASR Voice Transcription Settings' });
 
         new Setting(containerEl)
-            .setName('Zhipu API Key')
-            .setDesc('Your Zhipu AI API Key (GLM-ASR-2512)')
-            .addText(text => text
-                .setPlaceholder('Enter your API Key')
-                .setValue(this.plugin.settings.zhipuApiKey)
+            .setName('Transcription Provider')
+            .setDesc('Choose the AI provider for transcription')
+            .addDropdown(dropdown => dropdown
+                .addOption(TranscriptionProvider.ZHIPU, 'Zhipu AI (GLM-ASR-2512)')
+.addOption(TranscriptionProvider.VOLCENGINE, 'Volcengine Doubao (Standard Edition)')
+                .setValue(this.plugin.settings.transcriptionProvider)
                 .onChange(async (value) => {
-                    this.plugin.settings.zhipuApiKey = value.trim();
+                    this.plugin.settings.transcriptionProvider = value as TranscriptionProvider;
                     await this.plugin.saveSettings();
-                })
-                .inputEl.type = 'password');
+                    this.display(); // Refresh to show/hide relevant fields
+                }));
+
+        if (this.plugin.settings.transcriptionProvider === TranscriptionProvider.ZHIPU) {
+            new Setting(containerEl)
+                .setName('Zhipu API Key')
+                .setDesc('Your Zhipu AI API Key')
+                .addText(text => text
+                    .setPlaceholder('Enter your API Key')
+                    .setValue(this.plugin.settings.zhipuApiKey)
+                    .onChange(async (value) => {
+                        this.plugin.settings.zhipuApiKey = value.trim();
+                        await this.plugin.saveSettings();
+                    })
+                    .inputEl.type = 'password');
+        }
+
+        if (this.plugin.settings.transcriptionProvider === TranscriptionProvider.VOLCENGINE) {
+            new Setting(containerEl)
+                .setName('Volcengine App ID')
+                .setDesc('Your Volcengine App ID')
+                .addText(text => text
+                    .setPlaceholder('Enter your App ID')
+                    .setValue(this.plugin.settings.volcengineAppId)
+                    .onChange(async (value) => {
+                        this.plugin.settings.volcengineAppId = value.trim();
+                        await this.plugin.saveSettings();
+                    }));
+
+            new Setting(containerEl)
+                .setName('Volcengine Access Token')
+                .setDesc('Your Volcengine Access Token')
+                .addText(text => text
+                    .setPlaceholder('Enter your Access Token')
+                    .setValue(this.plugin.settings.volcengineAccessToken)
+                    .onChange(async (value) => {
+                        this.plugin.settings.volcengineAccessToken = value.trim();
+                        await this.plugin.saveSettings();
+                    })
+                    .inputEl.type = 'password');
+        }
 
         containerEl.createEl('h3', { text: 'Insertion Settings' });
 
