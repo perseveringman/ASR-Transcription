@@ -1,10 +1,10 @@
 {
-  "id": "ASR-Transcription",
+  "id": "asr-transcription",
   "name": "ASR-Transcription",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "minAppVersion": "0.15.0",
-  "description": "Voice transcription for Obsidian using Zhipu AI GLM-ASR-2512 model.",
-  "author": "Ryan B. Zhou",
-  "authorUrl": "https://github.com/ryanbzhou",
+  "description": "Voice transcription for Obsidian using Volcengine ASR service.",
+  "author": "perseveringman",
+  "authorUrl": "https://github.com/perseveringman",
   "isDesktopOnly": false
 }
