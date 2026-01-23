@@ -1,5 +1,5 @@
 {
-  "name": "obsidian-asr",
+  "name": "ASR-Transcription",
   "version": "1.0.0",
   "description": "Voice transcription for Obsidian using Zhipu AI",
   "main": "dist/main.js",
