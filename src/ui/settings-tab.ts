@@ -92,13 +92,24 @@ export class ASRSettingTab extends PluginSettingTab {
                 }));
 
         new Setting(containerEl)
-            .setName('Transcription Note Folder')
-            .setDesc('Folder where new transcription notes will be created')
+            .setName('Voice Note Folder')
+            .setDesc('Folder where new voice notes will be created')
             .addText(text => text
                 .setPlaceholder('/')
-                .setValue(this.plugin.settings.newNoteFolder)
+                .setValue(this.plugin.settings.voiceNoteFolder)
                 .onChange(async (value) => {
-                    this.plugin.settings.newNoteFolder = value;
+                    this.plugin.settings.voiceNoteFolder = value;
+                    await this.plugin.saveSettings();
+                }));
+
+        new Setting(containerEl)
+            .setName('Template File Path')
+            .setDesc('Path to the template file for new voice notes (e.g. templates/voice-note.md)')
+            .addText(text => text
+                .setPlaceholder('templates/voice-note.md')
+                .setValue(this.plugin.settings.templatePath)
+                .onChange(async (value) => {
+                    this.plugin.settings.templatePath = value;
                     await this.plugin.saveSettings();
                 }));
 

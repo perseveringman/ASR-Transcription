@@ -7,7 +7,8 @@ export class TextInserter {
     async insert(text: string, targetFile?: TFile) {
         const formattedText = this.formatText(text, targetFile);
 
-        if (targetFile) {
+        // Only try to insert near audio link if NOT creating a new note
+        if (targetFile && this.settings.insertPosition !== InsertPosition.NEW_NOTE) {
             const activeView = this.app.workspace.getActiveViewOfType(MarkdownView);
             if (activeView && activeView.file === this.app.workspace.getActiveFile()) {
                 const editor = activeView.editor;
@@ -43,13 +44,13 @@ export class TextInserter {
 
         switch (this.settings.insertPosition) {
             case InsertPosition.CURSOR:
-                this.insertAtCursor(formattedText);
+                this.insertAtCursor(formattedText, text, targetFile);
                 break;
             case InsertPosition.DOCUMENT_END:
-                this.insertAtEnd(formattedText);
+                this.insertAtEnd(formattedText, text, targetFile);
                 break;
             case InsertPosition.NEW_NOTE:
-                await this.createNewNote(formattedText);
+                await this.createNewNote(text, targetFile);
                 break;
         }
     }
@@ -75,31 +76,31 @@ export class TextInserter {
         return result;
     }
 
-    private insertAtCursor(text: string) {
+    private insertAtCursor(formattedText: string, rawText: string, audioFile?: TFile) {
         const activeView = this.app.workspace.getActiveViewOfType(MarkdownView);
         if (activeView) {
             const editor = activeView.editor;
             const cursor = editor.getCursor();
-            editor.replaceRange(text, cursor);
+            editor.replaceRange(formattedText, cursor);
         } else {
-            // If no active markdown view, maybe create a new note or show notice
-            this.createNewNote(text);
+            // If no active markdown view, create a new note with raw text
+            this.createNewNote(rawText, audioFile);
         }
     }
 
-    private insertAtEnd(text: string) {
+    private insertAtEnd(formattedText: string, rawText: string, audioFile?: TFile) {
         const activeView = this.app.workspace.getActiveViewOfType(MarkdownView);
         if (activeView) {
             const editor = activeView.editor;
             const lineCount = editor.lineCount();
-            editor.replaceRange(`\n${text}`, { line: lineCount, ch: 0 });
+            editor.replaceRange(`\n${formattedText}`, { line: lineCount, ch: 0 });
         } else {
-            this.createNewNote(text);
+            this.createNewNote(rawText, audioFile);
         }
     }
 
-    private async createNewNote(text: string) {
-        const folder = this.settings.newNoteFolder || '/';
+    private async createNewNote(text: string, audioFile?: TFile) {
+        const folder = this.settings.voiceNoteFolder || this.settings.newNoteFolder || '/';
         const timestamp = moment().format('YYYYMMDD-HHmmss');
         const filename = `Transcription-${timestamp}.md`;
         const path = folder === '/' ? filename : `${folder}/${filename}`;
@@ -112,8 +113,64 @@ export class TextInserter {
             }
         }
 
-        const file = await this.app.vault.create(path, text);
+        let content: string;
+        let templatePath = this.settings.templatePath?.trim();
+        
+        console.log('[ASR Plugin] createNewNote called');
+        console.log('[ASR Plugin] templatePath setting:', JSON.stringify(templatePath));
+        
+        if (templatePath) {
+            // Auto-add .md extension if missing
+            if (!templatePath.endsWith('.md')) {
+                templatePath = templatePath + '.md';
+                console.log('[ASR Plugin] Added .md extension, new path:', templatePath);
+            }
+            
+            console.log('[ASR Plugin] Looking for template file at:', templatePath);
+            const templateFile = this.app.vault.getAbstractFileByPath(templatePath);
+            console.log('[ASR Plugin] templateFile found:', templateFile ? 'yes' : 'no');
+            
+            if (templateFile instanceof TFile) {
+                const templateContent = await this.app.vault.read(templateFile);
+                console.log('[ASR Plugin] Template content:', templateContent);
+                // Use raw text for template, and pass audioFile for audio link variable
+                content = this.applyTemplate(templateContent, text, audioFile);
+                console.log('[ASR Plugin] Content after applying template:', content);
+            } else {
+                // Template not found, fallback to formatted text
+                console.warn(`[ASR Plugin] Template file not found at path: ${templatePath}`);
+                content = this.formatText(text, audioFile);
+            }
+        } else {
+            // No template configured, use formatted text
+            console.log('[ASR Plugin] No template configured, using formatText');
+            content = this.formatText(text, audioFile);
+        }
+        
+        console.log('[ASR Plugin] Final content to write:', content);
+
+        const file = await this.app.vault.create(path, content);
         const leaf = this.app.workspace.getLeaf(true);
         await leaf.openFile(file);
+    }
+
+    private applyTemplate(template: string, transcription: string, audioFile?: TFile): string {
+        const now = moment();
+        const vars: Record<string, string> = {
+            '{{date}}': now.format('YYYY-MM-DD'),
+            '{{time}}': now.format('HH:mm:ss'),
+            '{{datetime}}': now.format('YYYY-MM-DD HH:mm:ss'),
+            '{{transcription}}': transcription,
+            '{{content}}': transcription,
+            '{{text}}': transcription,
+            '{{audio}}': audioFile ? `![[${audioFile.path}]]` : '',
+            '{{audio_link}}': audioFile ? `![[${audioFile.path}]]` : ''
+        };
+
+        let result = template;
+        for (const [key, value] of Object.entries(vars)) {
+            result = result.replace(new RegExp(key, 'g'), value);
+        }
+        return result;
     }
 }

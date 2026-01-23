@@ -16,6 +16,8 @@ export interface PluginSettings {
     debugLogging: boolean;
     retryCount: number;
     timeout: number;
+    templatePath: string;
+    voiceNoteFolder: string;
 }
 
 export const DEFAULT_SETTINGS: PluginSettings = {
@@ -29,5 +31,7 @@ export const DEFAULT_SETTINGS: PluginSettings = {
     contextPrompt: '',
     debugLogging: false,
     retryCount: 3,
-    timeout: 30000
+    timeout: 30000,
+    templatePath: '',
+    voiceNoteFolder: '/'
 };
