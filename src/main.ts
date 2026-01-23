@@ -1,4 +1,4 @@
-import { Plugin, Notice, MarkdownView, TFile, moment } from 'obsidian';
+import { Plugin, Notice, MarkdownView, TFile, TAbstractFile, moment, Menu } from 'obsidian';
 import { DEFAULT_SETTINGS, PluginSettings } from './types/config';
 import { ASRSettingTab } from './ui/settings-tab';
 import { AudioRecorder } from './services/audio-recorder';
@@ -73,6 +73,173 @@ export default class ASRPlugin extends Plugin {
                 this.recorder.stop();
             }
         });
+
+        // Register file menu event for right-click transcription on audio files
+        this.registerEvent(
+            this.app.workspace.on('file-menu', (menu: Menu, file: TAbstractFile) => {
+                if (file instanceof TFile && this.isAudioFile(file)) {
+                    menu.addItem((item) => {
+                        item
+                            .setTitle('Transcribe audio')
+                            .setIcon('mic')
+                            .onClick(() => {
+                                this.handleAudioFileTranscription(file);
+                            });
+                    });
+                }
+            })
+        );
+    }
+
+    /**
+     * Check if a file is an audio file based on its extension
+     */
+    private isAudioFile(file: TFile): boolean {
+        const audioExtensions = ['mp3', 'wav', 'm4a', 'ogg', 'webm', 'flac', 'aac'];
+        return audioExtensions.includes(file.extension.toLowerCase());
+    }
+
+    /**
+     * Handle transcription of an audio file from context menu
+     * Always creates a new note with the transcription
+     */
+    async handleAudioFileTranscription(file: TFile) {
+        const transcriptionService = TranscriptionServiceFactory.create(this.settings);
+        const notice = new Notice(`Transcribing ${file.name}...`, 0);
+
+        try {
+            const arrayBuffer = await this.app.vault.readBinary(file);
+            const blob = new Blob([arrayBuffer], { type: this.getMimeType(file) });
+            
+            // Check duration
+            const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+            const audioBuffer = await audioContext.decodeAudioData(arrayBuffer.slice(0)); // Copy buffer as decodeAudioData consumes it
+            const duration = audioBuffer.duration;
+            await audioContext.close();
+
+            let fullText = '';
+
+            if (duration > 30) {
+                notice.setMessage(`Splitting ${file.name} into chunks...`);
+                const chunks = await AudioConverter.splitAndConvert(blob, 30);
+                
+                for (let i = 0; i < chunks.length; i++) {
+                    notice.setMessage(`Transcribing ${file.name}: chunk ${i + 1}/${chunks.length}...`);
+                    const result = await transcriptionService.transcribe(chunks[i]);
+                    fullText += (fullText ? ' ' : '') + result.text.trim();
+                }
+            } else {
+                let blobToUpload = blob;
+                if (file.extension.toLowerCase() === 'm4a') {
+                    notice.setMessage(`Converting ${file.name} to WAV...`);
+                    blobToUpload = await AudioConverter.convertToWav(blob);
+                }
+
+                const result = await transcriptionService.transcribe(blobToUpload);
+                fullText = result.text;
+            }
+
+            // Always create a new note for context menu transcription
+            await this.createTranscriptionNote(fullText, file);
+            notice.hide();
+            new Notice(`Transcription of ${file.name} complete!`);
+        } catch (err: any) {
+            notice.hide();
+            new Notice(`Transcription of ${file.name} failed: ${err.message}`);
+            console.error('ASR Plugin error:', err);
+        }
+    }
+
+    /**
+     * Create a new note with transcription content
+     */
+    private async createTranscriptionNote(text: string, audioFile: TFile) {
+        const folder = this.settings.voiceNoteFolder || this.settings.newNoteFolder || '/';
+        const timestamp = moment().format('YYYYMMDD-HHmmss');
+        const filename = `Transcription-${timestamp}.md`;
+        const path = folder === '/' ? filename : `${folder}/${filename}`;
+
+        // Ensure folder exists
+        if (folder !== '/') {
+            const folderExists = await this.app.vault.adapter.exists(folder);
+            if (!folderExists) {
+                await this.app.vault.createFolder(folder);
+            }
+        }
+
+        let content: string;
+        let templatePath = this.settings.templatePath?.trim();
+        
+        if (templatePath) {
+            // Auto-add .md extension if missing
+            if (!templatePath.endsWith('.md')) {
+                templatePath = templatePath + '.md';
+            }
+            
+            const templateFile = this.app.vault.getAbstractFileByPath(templatePath);
+            
+            if (templateFile instanceof TFile) {
+                const templateContent = await this.app.vault.read(templateFile);
+                content = this.applyTemplate(templateContent, text, audioFile);
+            } else {
+                // Template not found, fallback to formatted text
+                console.warn(`[ASR Plugin] Template file not found at path: ${templatePath}`);
+                content = this.formatTranscriptionText(text, audioFile);
+            }
+        } else {
+            content = this.formatTranscriptionText(text, audioFile);
+        }
+
+        const noteFile = await this.app.vault.create(path, content);
+        const leaf = this.app.workspace.getLeaf(true);
+        await leaf.openFile(noteFile);
+    }
+
+    /**
+     * Format transcription text with audio link and optional timestamp/separator
+     */
+    private formatTranscriptionText(text: string, audioFile?: TFile): string {
+        let result = text.trim();
+
+        if (this.settings.addTimestamp) {
+            const timestamp = moment().format('YYYY-MM-DD HH:mm:ss');
+            result = `[${timestamp}] ${result}`;
+        }
+
+        if (audioFile) {
+            result = `![[${audioFile.path}]]\n${result}`;
+        }
+
+        if (this.settings.addSeparator) {
+            result = `---\n${result}\n`;
+        } else {
+            result = `${result}\n`;
+        }
+
+        return result;
+    }
+
+    /**
+     * Apply template variables to template content
+     */
+    private applyTemplate(template: string, transcription: string, audioFile?: TFile): string {
+        const now = moment();
+        const vars: Record<string, string> = {
+            '{{date}}': now.format('YYYY-MM-DD'),
+            '{{time}}': now.format('HH:mm:ss'),
+            '{{datetime}}': now.format('YYYY-MM-DD HH:mm:ss'),
+            '{{transcription}}': transcription,
+            '{{content}}': transcription,
+            '{{text}}': transcription,
+            '{{audio}}': audioFile ? `![[${audioFile.path}]]` : '',
+            '{{audio_link}}': audioFile ? `![[${audioFile.path}]]` : ''
+        };
+
+        let result = template;
+        for (const [key, value] of Object.entries(vars)) {
+            result = result.replace(new RegExp(key, 'g'), value);
+        }
+        return result;
     }
 
     async handleTranscription(audio: Blob | File) {
