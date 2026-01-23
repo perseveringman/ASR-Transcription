@@ -4,7 +4,8 @@ export class AudioConverter {
      */
     static async splitAndConvert(audioBlob: Blob, chunkDurationSeconds: number = 30): Promise<Blob[]> {
         const arrayBuffer = await audioBlob.arrayBuffer();
-        const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+        const AudioContextClass = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+        const audioContext = new AudioContextClass();
         
         try {
             const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
@@ -46,7 +47,8 @@ export class AudioConverter {
      */
     static async convertToWav(audioBlob: Blob): Promise<Blob> {
         const arrayBuffer = await audioBlob.arrayBuffer();
-        const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+        const AudioContextClass = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+        const audioContext = new AudioContextClass();
         
         try {
             const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
@@ -58,7 +60,6 @@ export class AudioConverter {
     }
 
     private static encodeWAV(audioBuffer: AudioBuffer): ArrayBuffer {
-        const numberOfChannels = audioBuffer.numberOfChannels;
         const sampleRate = audioBuffer.sampleRate;
         const format = 1; // PCM
         const bitDepth = 16;

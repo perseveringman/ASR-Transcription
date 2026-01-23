@@ -1,4 +1,4 @@
-import { TranscriptionService, TranscriptionOptions } from '../../types/transcription';
+import { TranscriptionService } from '../../types/transcription';
 import { ZhipuTranscriptionService } from './zhipu-api';
 import { VolcengineTranscriptionService } from './volcengine-api';
 import { PluginSettings, TranscriptionProvider } from '../../types/config';

@@ -1,4 +1,4 @@
-import { App, TFile, iterateCacheRefs } from 'obsidian';
+import { App, TFile } from 'obsidian';
 
 export class VaultUtils {
     static getReferencedAudioFiles(app: App, file: TFile): TFile[] {

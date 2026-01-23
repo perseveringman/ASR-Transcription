@@ -9,7 +9,7 @@ export class RecordingModal extends Modal {
     private startStopBtn!: HTMLButtonElement;
     private uploadBtn!: HTMLButtonElement;
 
-    private handlers: { [key: string]: any } = {};
+    private handlers: { [key: string]: (arg: unknown) => void } = {};
 
     constructor(app: App, recorder: AudioRecorder, private onRecordingComplete: (blob: Blob) => Promise<void>) {
         super(app);
@@ -50,14 +50,15 @@ export class RecordingModal extends Modal {
         };
 
         // Define handlers
-        this.handlers['statechange'] = (state: any) => this.updateUI(state);
-        this.handlers['durationchange'] = (seconds: any) => this.updateTimer(seconds);
-        this.handlers['recorded'] = async (blob: any) => {
-            await this.onRecordingComplete(blob);
+        this.handlers['statechange'] = (state: unknown) => this.updateUI(state as RecordingState);
+        this.handlers['durationchange'] = (seconds: unknown) => this.updateTimer(seconds as number);
+        this.handlers['recorded'] = async (blob: unknown) => {
+            await this.onRecordingComplete(blob as Blob);
             this.close();
         };
-        this.handlers['error'] = (err: any) => {
-            new Notice(`Recording error: ${err}`);
+        this.handlers['error'] = (err: unknown) => {
+            const message = err instanceof Error ? err.message : String(err);
+            new Notice(`Recording error: ${message}`);
             this.updateUI(RecordingState.IDLE);
         };
 
@@ -87,8 +88,9 @@ export class RecordingModal extends Modal {
     private async startRecording() {
         try {
             await this.recorder.start();
-        } catch (err: any) {
-            new Notice(`Failed to start recording: ${err.message}`);
+        } catch (err: unknown) {
+            const message = err instanceof Error ? err.message : String(err);
+            new Notice(`Failed to start recording: ${message}`);
         }
     }
 
@@ -100,8 +102,9 @@ export class RecordingModal extends Modal {
         const input = document.createElement('input');
         input.type = 'file';
         input.accept = 'audio/wav,audio/mpeg,audio/mp3,audio/mp4,audio/x-m4a';
-        input.onchange = async (e: any) => {
-            const file = e.target.files[0];
+        input.onchange = async (e: Event) => {
+            const target = e.target as HTMLInputElement;
+            const file = target.files?.[0];
             if (file) {
                 if (file.size > 25 * 1024 * 1024) {
                     new Notice('File too large (max 25MB)');

@@ -1,5 +1,5 @@
 import { Events } from 'obsidian';
-import { RecordingState, AudioFormat } from '../types/audio';
+import { RecordingState } from '../types/audio';
 
 export class AudioRecorder extends Events {
     private mediaRecorder: MediaRecorder | null = null;

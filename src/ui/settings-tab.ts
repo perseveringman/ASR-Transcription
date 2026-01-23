@@ -15,10 +15,12 @@ export class ASRSettingTab extends PluginSettingTab {
 
         containerEl.empty();
 
-        containerEl.createEl('h2', { text: 'ASR Voice Transcription Settings' });
+        new Setting(containerEl)
+            .setName('ASR Voice Transcription Settings')
+            .setHeading();
 
         new Setting(containerEl)
-            .setName('Transcription Provider')
+            .setName('Transcription provider')
             .setDesc('Choose the AI provider for transcription')
             .addDropdown(dropdown => dropdown
                 .addOption(TranscriptionProvider.ZHIPU, 'Zhipu AI (GLM-ASR-2512)')
@@ -32,7 +34,7 @@ export class ASRSettingTab extends PluginSettingTab {
 
         if (this.plugin.settings.transcriptionProvider === TranscriptionProvider.ZHIPU) {
             new Setting(containerEl)
-                .setName('Zhipu API Key')
+                .setName('Zhipu API key')
                 .setDesc('Your Zhipu AI API Key')
                 .addText(text => text
                     .setPlaceholder('Enter your API Key')
@@ -57,7 +59,7 @@ export class ASRSettingTab extends PluginSettingTab {
                     }));
 
             new Setting(containerEl)
-                .setName('Volcengine Access Token')
+                .setName('Volcengine access token')
                 .setDesc('Your Volcengine Access Token')
                 .addText(text => text
                     .setPlaceholder('Enter your Access Token')
@@ -69,10 +71,12 @@ export class ASRSettingTab extends PluginSettingTab {
                     .inputEl.type = 'password');
         }
 
-        containerEl.createEl('h3', { text: 'Insertion Settings' });
+        new Setting(containerEl)
+            .setName('Insertion settings')
+            .setHeading();
 
         new Setting(containerEl)
-            .setName('Insert Position')
+            .setName('Insert position')
             .setDesc('Where to insert the transcribed text')
             .addDropdown(dropdown => dropdown
                 .addOption(InsertPosition.CURSOR, 'At cursor')
@@ -85,7 +89,7 @@ export class ASRSettingTab extends PluginSettingTab {
                 }));
 
         new Setting(containerEl)
-            .setName('Add Timestamp')
+            .setName('Add timestamp')
             .setDesc('Prepend a timestamp to the transcribed text')
             .addToggle(toggle => toggle
                 .setValue(this.plugin.settings.addTimestamp)
@@ -95,7 +99,7 @@ export class ASRSettingTab extends PluginSettingTab {
                 }));
 
         new Setting(containerEl)
-            .setName('Add Separator')
+            .setName('Add separator')
             .setDesc('Add a separator before the transcribed text')
             .addToggle(toggle => toggle
                 .setValue(this.plugin.settings.addSeparator)
@@ -104,10 +108,12 @@ export class ASRSettingTab extends PluginSettingTab {
                     await this.plugin.saveSettings();
                 }));
 
-        containerEl.createEl('h3', { text: 'Storage Settings' });
+        new Setting(containerEl)
+            .setName('Storage settings')
+            .setHeading();
 
         new Setting(containerEl)
-            .setName('Audio Save Folder')
+            .setName('Audio save folder')
             .setDesc('Folder where recorded audio files will be saved')
             .addText(text => text
                 .setPlaceholder('/')
@@ -118,7 +124,7 @@ export class ASRSettingTab extends PluginSettingTab {
                 }));
 
         new Setting(containerEl)
-            .setName('Voice Note Folder')
+            .setName('Voice note folder')
             .setDesc('Folder where new voice notes will be created')
             .addText(text => text
                 .setPlaceholder('/')
@@ -129,7 +135,7 @@ export class ASRSettingTab extends PluginSettingTab {
                 }));
 
         new Setting(containerEl)
-            .setName('Template File Path')
+            .setName('Template file path')
             .setDesc('Path to the template file for new voice notes (e.g. templates/voice-note.md)')
             .addText(text => text
                 .setPlaceholder('templates/voice-note.md')
@@ -139,10 +145,12 @@ export class ASRSettingTab extends PluginSettingTab {
                     await this.plugin.saveSettings();
                 }));
 
-        containerEl.createEl('h3', { text: 'Transcription Options' });
+        new Setting(containerEl)
+            .setName('Transcription options')
+            .setHeading();
 
         new Setting(containerEl)
-            .setName('Context Prompt')
+            .setName('Context prompt')
             .setDesc('Provide context to improve transcription accuracy')
             .addTextArea(text => text
                 .setPlaceholder('e.g. This is a technical meeting about...')
@@ -163,10 +171,12 @@ export class ASRSettingTab extends PluginSettingTab {
                     await this.plugin.saveSettings();
                 }));
 
-        containerEl.createEl('h3', { text: 'Advanced Settings' });
+        new Setting(containerEl)
+            .setName('Advanced settings')
+            .setHeading();
 
         new Setting(containerEl)
-            .setName('Debug Logging')
+            .setName('Debug logging')
             .setDesc('Enable debug logging to console')
             .addToggle(toggle => toggle
                 .setValue(this.plugin.settings.debugLogging)
@@ -176,7 +186,7 @@ export class ASRSettingTab extends PluginSettingTab {
                 }));
 
         new Setting(containerEl)
-            .setName('Retry Count')
+            .setName('Retry count')
             .setDesc('Number of times to retry failed API calls')
             .addSlider(slider => slider
                 .setLimits(0, 5, 1)

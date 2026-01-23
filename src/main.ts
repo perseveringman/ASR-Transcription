@@ -1,4 +1,4 @@
-import { Plugin, Notice, MarkdownView, TFile, TAbstractFile, moment, Menu } from 'obsidian';
+import { Plugin, Notice, TFile, TAbstractFile, moment, Menu } from 'obsidian';
 import { DEFAULT_SETTINGS, PluginSettings } from './types/config';
 import { ASRSettingTab } from './ui/settings-tab';
 import { AudioRecorder } from './services/audio-recorder';
@@ -48,10 +48,10 @@ export default class ASRPlugin extends Plugin {
                 }
 
                 if (audioFiles.length === 1) {
-                    this.handleFileTranscription(audioFiles[0]);
+                    void this.handleFileTranscription(audioFiles[0]);
                 } else {
                     new AudioSelectionModal(this.app, audioFiles, (file) => {
-                        this.handleFileTranscription(file);
+                        void this.handleFileTranscription(file);
                     }).open();
                 }
                 return true;
@@ -62,7 +62,10 @@ export default class ASRPlugin extends Plugin {
             id: 'start-recording',
             name: 'Start recording',
             callback: () => {
-                this.recorder.start().catch((err: any) => new Notice(`Failed to start recording: ${err.message}`));
+                void this.recorder.start().catch((err: unknown) => {
+                    const message = err instanceof Error ? err.message : String(err);
+                    new Notice(`Failed to start recording: ${message}`);
+                });
             }
         });
 
@@ -83,7 +86,7 @@ export default class ASRPlugin extends Plugin {
                             .setTitle('Transcribe audio')
                             .setIcon('mic')
                             .onClick(() => {
-                                this.handleAudioFileTranscription(file);
+                                void this.handleAudioFileTranscription(file);
                             });
                     });
                 }
@@ -128,7 +131,8 @@ export default class ASRPlugin extends Plugin {
             }
             
             // Check duration for chunking
-            const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+            const AudioContextClass = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+            const audioContext = new AudioContextClass();
             const audioBuffer = await audioContext.decodeAudioData(arrayBuffer.slice(0)); 
             const duration = audioBuffer.duration;
             await audioContext.close();
@@ -163,7 +167,7 @@ export default class ASRPlugin extends Plugin {
 
             notice.hide();
             return fullText;
-        } catch (err: any) {
+        } catch (err: unknown) {
             notice.hide();
             throw err;
         }
@@ -178,8 +182,9 @@ export default class ASRPlugin extends Plugin {
             const fullText = await this.processTranscription(file);
             await this.createTranscriptionNote(fullText, file);
             new Notice(`Transcription of ${file.name} complete!`);
-        } catch (err: any) {
-            new Notice(`Transcription of ${file.name} failed: ${err.message}`);
+        } catch (err: unknown) {
+            const message = err instanceof Error ? err.message : String(err);
+            new Notice(`Transcription of ${file.name} failed: ${message}`);
             console.error('ASR Plugin error:', err);
         }
     }
@@ -216,9 +221,10 @@ export default class ASRPlugin extends Plugin {
             await this.textInserter.insert(fullText, audioFile || undefined);
             notice.hide();
             new Notice('Transcription complete!');
-        } catch (err: any) {
+        } catch (err: unknown) {
             notice.hide();
-            new Notice(`Transcription failed: ${err.message}`);
+            const message = err instanceof Error ? err.message : String(err);
+            new Notice(`Transcription failed: ${message}`);
             console.error('ASR Plugin error:', err);
         }
     }
@@ -228,8 +234,9 @@ export default class ASRPlugin extends Plugin {
             const fullText = await this.processTranscription(file);
             await this.textInserter.insert(fullText, file);
             new Notice(`Transcription of ${file.name} complete!`);
-        } catch (err: any) {
-            new Notice(`Transcription of ${file.name} failed: ${err.message}`);
+        } catch (err: unknown) {
+            const message = err instanceof Error ? err.message : String(err);
+            new Notice(`Transcription of ${file.name} failed: ${message}`);
             console.error('ASR Plugin error:', err);
         }
     }

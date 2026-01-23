@@ -1,3 +1,4 @@
+import { requestUrl } from 'obsidian';
 import { TranscriptionService, TranscriptionResult, TranscriptionOptions, TranscriptionError, TranscriptionErrorType, TranscriptionConstraints } from '../../types/transcription';
 import { PluginSettings } from '../../types/config';
 import { VolcengineFlashResponse } from '../../types/volcengine';
@@ -41,9 +42,10 @@ export class VolcengineTranscriptionService implements TranscriptionService {
         return this.pollForResult(requestId);
     }
 
-    private async submitTask(body: any, requestId: string, attempt = 0): Promise<void> {
+    private async submitTask(body: Record<string, unknown>, requestId: string, attempt = 0): Promise<void> {
         try {
-            const response = await fetch(this.submitURL, {
+            const response = await requestUrl({
+                url: this.submitURL,
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -56,8 +58,8 @@ export class VolcengineTranscriptionService implements TranscriptionService {
                 body: JSON.stringify(body)
             });
 
-            const statusCode = response.headers.get('X-Api-Status-Code');
-            const apiMessage = response.headers.get('X-Api-Message');
+            const statusCode = response.headers['x-api-status-code'];
+            const apiMessage = response.headers['x-api-message'];
 
             if (statusCode !== '20000000') {
                 const status = parseInt(statusCode || '0');
@@ -75,9 +77,10 @@ export class VolcengineTranscriptionService implements TranscriptionService {
                     apiMessage || `Volcengine Submission Error: ${statusCode}`
                 );
             }
-        } catch (error: any) {
+        } catch (error: unknown) {
             if (error instanceof TranscriptionError) throw error;
-            throw new TranscriptionError(TranscriptionErrorType.NETWORK_ERROR, `Submission network error: ${error.message}`);
+            const message = error instanceof Error ? error.message : String(error);
+            throw new TranscriptionError(TranscriptionErrorType.NETWORK_ERROR, `Submission network error: ${message}`);
         }
     }
 
@@ -87,7 +90,8 @@ export class VolcengineTranscriptionService implements TranscriptionService {
 
         for (let i = 0; i < MAX_POLLING_ATTEMPTS; i++) {
             try {
-                const response = await fetch(this.queryURL, {
+                const response = await requestUrl({
+                    url: this.queryURL,
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -99,11 +103,11 @@ export class VolcengineTranscriptionService implements TranscriptionService {
                     body: JSON.stringify({})
                 });
 
-                const statusCode = response.headers.get('X-Api-Status-Code');
-                const apiMessage = response.headers.get('X-Api-Message');
+                const statusCode = response.headers['x-api-status-code'];
+                const apiMessage = response.headers['x-api-message'];
 
                 if (statusCode === '20000000') {
-                    const data: VolcengineFlashResponse = await response.json();
+                    const data: VolcengineFlashResponse = (typeof response.json === 'object' ? response.json : JSON.parse(response.text)) as VolcengineFlashResponse;
                     return {
                         text: data.result.text,
                         requestId: requestId,
@@ -123,11 +127,12 @@ export class VolcengineTranscriptionService implements TranscriptionService {
                 // Wait before next poll
                 await new Promise(resolve => setTimeout(resolve, POLLING_INTERVAL));
 
-            } catch (error: any) {
+            } catch (error: unknown) {
                 if (error instanceof TranscriptionError) throw error;
                 // Network errors during polling - retry within the loop
                 if (i === MAX_POLLING_ATTEMPTS - 1) {
-                    throw new TranscriptionError(TranscriptionErrorType.NETWORK_ERROR, `Polling network error: ${error.message}`);
+                    const message = error instanceof Error ? error.message : String(error);
+                    throw new TranscriptionError(TranscriptionErrorType.NETWORK_ERROR, `Polling network error: ${message}`);
                 }
                 await new Promise(resolve => setTimeout(resolve, POLLING_INTERVAL));
             }
@@ -162,7 +167,7 @@ export class VolcengineTranscriptionService implements TranscriptionService {
     private generateUUID(): string {
         try {
             return crypto.randomUUID();
-        } catch (e) {
+        } catch {
             // Fallback for older environments
             return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
                 const r = Math.random() * 16 | 0, v = c == 'x' ? r : (r & 0x3 | 0x8);

@@ -1,4 +1,4 @@
-import { App, Editor, MarkdownView, TFile, moment } from 'obsidian';
+import { App, MarkdownView, TFile, moment } from 'obsidian';
 import { PluginSettings, InsertPosition } from '../types/config';
 
 export class TextInserter {
@@ -22,7 +22,6 @@ export class TextInserter {
 
                 // Escape special characters for regex
                 const escapeRegex = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-                const escapedName = escapeRegex(fileName);
                 const escapedBaseName = escapeRegex(fileBaseName);
 
                 // Look for [[filename]] or ![[filename]]
@@ -84,7 +83,7 @@ export class TextInserter {
             editor.replaceRange(formattedText, cursor);
         } else {
             // If no active markdown view, create a new note with raw text
-            this.createNewNote(rawText, audioFile);
+            void this.createNewNote(rawText, audioFile);
         }
     }
 
@@ -95,7 +94,7 @@ export class TextInserter {
             const lineCount = editor.lineCount();
             editor.replaceRange(`\n${formattedText}`, { line: lineCount, ch: 0 });
         } else {
-            this.createNewNote(rawText, audioFile);
+            void this.createNewNote(rawText, audioFile);
         }
     }
 
@@ -116,26 +115,38 @@ export class TextInserter {
         let content: string;
         let templatePath = this.settings.templatePath?.trim();
         
-        console.log('[ASR Plugin] createNewNote called');
-        console.log('[ASR Plugin] templatePath setting:', JSON.stringify(templatePath));
+        if (this.settings.debugLogging) {
+            console.debug('[ASR Plugin] createNewNote called');
+            console.debug('[ASR Plugin] templatePath setting:', JSON.stringify(templatePath));
+        }
         
         if (templatePath) {
             // Auto-add .md extension if missing
             if (!templatePath.endsWith('.md')) {
                 templatePath = templatePath + '.md';
-                console.log('[ASR Plugin] Added .md extension, new path:', templatePath);
+                if (this.settings.debugLogging) {
+                    console.debug('[ASR Plugin] Added .md extension, new path:', templatePath);
+                }
             }
             
-            console.log('[ASR Plugin] Looking for template file at:', templatePath);
+            if (this.settings.debugLogging) {
+                console.debug('[ASR Plugin] Looking for template file at:', templatePath);
+            }
             const templateFile = this.app.vault.getAbstractFileByPath(templatePath);
-            console.log('[ASR Plugin] templateFile found:', templateFile ? 'yes' : 'no');
+            if (this.settings.debugLogging) {
+                console.debug('[ASR Plugin] templateFile found:', templateFile ? 'yes' : 'no');
+            }
             
             if (templateFile instanceof TFile) {
                 const templateContent = await this.app.vault.read(templateFile);
-                console.log('[ASR Plugin] Template content:', templateContent);
+                if (this.settings.debugLogging) {
+                    console.debug('[ASR Plugin] Template content:', templateContent);
+                }
                 // Use raw text for template, and pass audioFile for audio link variable
                 content = this.applyTemplate(templateContent, text, audioFile);
-                console.log('[ASR Plugin] Content after applying template:', content);
+                if (this.settings.debugLogging) {
+                    console.debug('[ASR Plugin] Content after applying template:', content);
+                }
             } else {
                 // Template not found, fallback to formatted text
                 console.warn(`[ASR Plugin] Template file not found at path: ${templatePath}`);
@@ -143,11 +154,15 @@ export class TextInserter {
             }
         } else {
             // No template configured, use formatted text
-            console.log('[ASR Plugin] No template configured, using formatText');
+            if (this.settings.debugLogging) {
+                console.debug('[ASR Plugin] No template configured, using formatText');
+            }
             content = this.formatText(text, audioFile);
         }
         
-        console.log('[ASR Plugin] Final content to write:', content);
+        if (this.settings.debugLogging) {
+            console.debug('[ASR Plugin] Final content to write:', content);
+        }
 
         const file = await this.app.vault.create(path, content);
         const leaf = this.app.workspace.getLeaf(true);

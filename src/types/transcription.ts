@@ -13,7 +13,7 @@ export class TranscriptionError extends Error {
     constructor(
         public type: TranscriptionErrorType,
         message: string,
-        public details?: any
+        public details?: unknown
     ) {
         super(message);
         this.name = 'TranscriptionError';
