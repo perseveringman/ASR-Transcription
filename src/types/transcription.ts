@@ -32,8 +32,14 @@ export interface TranscriptionOptions {
     hotwords?: string[];
 }
 
+export interface TranscriptionConstraints {
+    maxDurationSeconds: number;
+    maxFileSizeBytes: number;
+}
+
 export interface TranscriptionService {
     name: string;
     transcribe(audio: File | Blob, options?: TranscriptionOptions): Promise<TranscriptionResult>;
+    getConstraints(): TranscriptionConstraints;
     supportsStreaming(): boolean;
 }

@@ -1,9 +1,8 @@
 # Specification: Voice Transcription
 
+## Purpose
 This specification defines the core voice-to-text transcription capability using external API services.
-
-## ADDED Requirements
-
+## Requirements
 ### Requirement: Zhipu API Integration
 
 The plugin SHALL integrate with Zhipu AI's GLM-ASR-2512 model to transcribe audio files into text.
@@ -171,6 +170,18 @@ The plugin SHALL process and format transcription results before insertion.
 - **AND** the transcribed text contains leading or trailing whitespace
 - **THEN** the system trims the whitespace
 - **AND** ensures the text ends with a newline character
+
+### Requirement: Enhanced Transcription Service Abstraction
+
+The plugin SHALL implement an abstract interface for transcription services to support multiple providers with varying capabilities.
+
+#### Scenario: Service provider interface
+
+- **WHEN** implementing a new transcription service provider
+- **THEN** the service MUST implement the `TranscriptionService` interface
+- **AND** provide methods: `transcribe(audio, options)`, `getConstraints()`
+- **AND** return standardized `TranscriptionResult` objects
+
 ## ADDED Requirements
 
 ### Requirement: Transcribe Referenced Audio

@@ -1,4 +1,4 @@
-import { TranscriptionService, TranscriptionResult, TranscriptionOptions, TranscriptionError, TranscriptionErrorType } from '../../types/transcription';
+import { TranscriptionService, TranscriptionResult, TranscriptionOptions, TranscriptionError, TranscriptionErrorType, TranscriptionConstraints } from '../../types/transcription';
 import { ZhipuTranscriptionResponse, ZhipuErrorResponse } from '../../types/zhipu';
 import { PluginSettings } from '../../types/config';
 
@@ -34,6 +34,13 @@ export class ZhipuTranscriptionService implements TranscriptionService {
         }
 
         return this.transcribeWithRetry(formData);
+    }
+
+    getConstraints(): TranscriptionConstraints {
+        return {
+            maxDurationSeconds: 30,
+            maxFileSizeBytes: 25 * 1024 * 1024 // 25MB
+        };
     }
 
     private async transcribeWithRetry(formData: FormData, attempt = 0): Promise<TranscriptionResult> {
