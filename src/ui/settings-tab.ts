@@ -42,21 +42,7 @@ export class ASRSettingTab extends PluginSettingTab {
                 .onChange(async (value) => {
                     this.plugin.settings.insertPosition = value as InsertPosition;
                     await this.plugin.saveSettings();
-                    this.display(); // Refresh to show/hide folder setting
                 }));
-
-        if (this.plugin.settings.insertPosition === InsertPosition.NEW_NOTE) {
-            new Setting(containerEl)
-                .setName('New Note Folder')
-                .setDesc('Folder where new notes will be created')
-                .addText(text => text
-                    .setPlaceholder('/')
-                    .setValue(this.plugin.settings.newNoteFolder)
-                    .onChange(async (value) => {
-                        this.plugin.settings.newNoteFolder = value;
-                        await this.plugin.saveSettings();
-                    }));
-        }
 
         new Setting(containerEl)
             .setName('Add Timestamp')

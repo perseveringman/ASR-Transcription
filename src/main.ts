@@ -154,7 +154,7 @@ export default class ASRPlugin extends Plugin {
      * Create a new note with transcription content
      */
     private async createTranscriptionNote(text: string, audioFile: TFile) {
-        const folder = this.settings.voiceNoteFolder || this.settings.newNoteFolder || '/';
+        const folder = this.settings.voiceNoteFolder || '/';
         const timestamp = moment().format('YYYYMMDD-HHmmss');
         const filename = `Transcription-${timestamp}.md`;
         const path = folder === '/' ? filename : `${folder}/${filename}`;
