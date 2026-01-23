@@ -1,4 +1,4 @@
-import { Plugin, Notice, MarkdownView, TFile } from 'obsidian';
+import { Plugin, Notice, MarkdownView, TFile, moment } from 'obsidian';
 import { DEFAULT_SETTINGS, PluginSettings } from './types/config';
 import { ASRSettingTab } from './ui/settings-tab';
 import { AudioRecorder } from './services/audio-recorder';
@@ -80,7 +80,29 @@ export default class ASRPlugin extends Plugin {
         const notice = new Notice('Processing audio...', 0);
 
         try {
-            // Use AudioContext to check duration
+            // 1. Save the audio file if it's a new recording (Blob)
+            let audioFile: TFile | null = null;
+            if (!(audio instanceof File)) {
+                const timestamp = moment().format('YYYYMMDD-HHmmss');
+                const extension = audio.type.includes('wav') ? 'wav' : 'mp3';
+                const fileName = `Recording-${timestamp}.${extension}`;
+                const folder = this.settings.audioSaveFolder || '/';
+                
+                // Ensure folder exists
+                if (folder !== '/') {
+                    const folderExists = await this.app.vault.adapter.exists(folder);
+                    if (!folderExists) {
+                        await this.app.vault.createFolder(folder);
+                    }
+                }
+                
+                const path = folder === '/' ? fileName : `${folder}/${fileName}`;
+                const arrayBuffer = await audio.arrayBuffer();
+                audioFile = await this.app.vault.createBinary(path, arrayBuffer);
+                new Notice(`Audio saved: ${fileName}`);
+            }
+
+            // 2. Process transcription (rest of the logic)
             const arrayBuffer = await audio.arrayBuffer();
             const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
             const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
@@ -111,7 +133,7 @@ export default class ASRPlugin extends Plugin {
                 fullText = result.text;
             }
 
-            await this.textInserter.insert(fullText);
+            await this.textInserter.insert(fullText, audioFile || undefined);
             notice.hide();
             new Notice('Transcription complete!');
         } catch (err: any) {

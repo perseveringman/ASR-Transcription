@@ -5,7 +5,7 @@ export class TextInserter {
     constructor(private app: App, private settings: PluginSettings) {}
 
     async insert(text: string, targetFile?: TFile) {
-        const formattedText = this.formatText(text);
+        const formattedText = this.formatText(text, targetFile);
 
         if (targetFile) {
             const activeView = this.app.workspace.getActiveViewOfType(MarkdownView);
@@ -54,12 +54,16 @@ export class TextInserter {
         }
     }
 
-    private formatText(text: string): string {
+    private formatText(text: string, audioFile?: TFile): string {
         let result = text.trim();
 
         if (this.settings.addTimestamp) {
             const timestamp = moment().format('YYYY-MM-DD HH:mm:ss');
             result = `[${timestamp}] ${result}`;
+        }
+
+        if (audioFile) {
+            result = `![[${audioFile.path}]]\n${result}`;
         }
 
         if (this.settings.addSeparator) {
