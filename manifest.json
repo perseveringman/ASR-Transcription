@@ -1,9 +1,9 @@
 {
   "id": "asr-transcription",
   "name": "ASR-Transcription",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "minAppVersion": "0.15.0",
-  "description": "Voice transcription for Obsidian using Volcengine ASR service.",
+  "description": "Voice transcription using Volcengine ASR service.",
   "author": "perseveringman",
   "authorUrl": "https://github.com/perseveringman",
   "isDesktopOnly": false
