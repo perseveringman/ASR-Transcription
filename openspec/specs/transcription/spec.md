@@ -219,3 +219,10 @@ The plugin SHALL automatically convert unsupported or potentially incompatible a
 - **AND** encodes it into 16-bit PCM WAV format (mono, same sample rate)
 - **AND** sends the resulting WAV blob to the transcription service
 - **AND** displays a notice: "Converting m4a to WAV for compatibility..."
+
+#### Scenario: Long audio automatic chunking
+- **WHEN** the user provides an audio file longer than 30 seconds
+- **THEN** the system automatically splits it into 30-second segments
+- **AND** transcribes each segment sequentially
+- **AND** concatenates the results into a single text block
+
