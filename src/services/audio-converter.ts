@@ -1,5 +1,47 @@
 export class AudioConverter {
     /**
+     * Splits an audio Blob into multiple WAV Blobs of specified duration
+     */
+    static async splitAndConvert(audioBlob: Blob, chunkDurationSeconds: number = 30): Promise<Blob[]> {
+        const arrayBuffer = await audioBlob.arrayBuffer();
+        const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+        
+        try {
+            const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
+            const totalDuration = audioBuffer.duration;
+            const chunks: Blob[] = [];
+            
+            for (let start = 0; start < totalDuration; start += chunkDurationSeconds) {
+                const end = Math.min(start + chunkDurationSeconds, totalDuration);
+                const chunkBuffer = this.sliceAudioBuffer(audioContext, audioBuffer, start, end);
+                const wavBuffer = this.encodeWAV(chunkBuffer);
+                chunks.push(new Blob([wavBuffer], { type: 'audio/wav' }));
+            }
+            
+            return chunks;
+        } finally {
+            await audioContext.close();
+        }
+    }
+
+    private static sliceAudioBuffer(ctx: AudioContext, buffer: AudioBuffer, start: number, end: number): AudioBuffer {
+        const sampleRate = buffer.sampleRate;
+        const startOffset = Math.floor(start * sampleRate);
+        const endOffset = Math.floor(end * sampleRate);
+        const frameCount = endOffset - startOffset;
+        
+        const newBuffer = ctx.createBuffer(buffer.numberOfChannels, frameCount, sampleRate);
+        
+        for (let i = 0; i < buffer.numberOfChannels; i++) {
+            const channelData = buffer.getChannelData(i);
+            const newChannelData = newBuffer.getChannelData(i);
+            newChannelData.set(channelData.subarray(startOffset, endOffset));
+        }
+        
+        return newBuffer;
+    }
+
+    /**
      * Converts a Blob or File to a WAV format Blob
      */
     static async convertToWav(audioBlob: Blob): Promise<Blob> {

@@ -54,8 +54,8 @@ export class AudioRecorder extends Events {
                 const duration = Math.floor((Date.now() - this.startTime) / 1000);
                 this.trigger('durationchange', duration);
                 
-                // Auto-stop at 30 seconds (Zhipu API limit)
-                if (duration >= 30) {
+                // Auto-stop at 10 minutes (safety limit)
+                if (duration >= 600) {
                     this.stop();
                 }
             }, 1000);
