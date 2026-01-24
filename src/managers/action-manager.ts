@@ -1,11 +1,11 @@
 import { App, MarkdownView, Notice, TFile, moment } from 'obsidian';
 import { LLMManager } from './llm-manager';
-import { ActionCategory, AIAction, SourceConfig } from '../types/action';
+import { RootCategory, AIAction, SourceConfig } from '../types/action';
 import { PluginSettings } from '../types/config';
 import { TimeRangeModal } from '../ui/modals/time-range-modal';
 
 export class ActionManager {
-    private categories: ActionCategory[] = [];
+    private categories: RootCategory[] = [];
     private settings: PluginSettings;
 
     constructor(private app: App, private llmManager: LLMManager, settings: PluginSettings) {
@@ -22,15 +22,45 @@ export class ActionManager {
         this.categories = [
             {
                 id: 'emergence',
-                name: 'AI 涌现能力', // Emergent Capabilities
-                actions: [
+                name: 'AI 涌现', // Level 1: Root
+                subCategories: [
                     {
-                        id: 'value-clarification',
-                        name: '价值澄清', 
-                        description: '分析内容，提取核心价值',
-                        icon: 'star',
-                        outputMode: 'new-note',
-                        systemPrompt: this.getValueClarificationPrompt(),
+                        id: 'thinking-decision',
+                        name: '思维决策', // Level 2: Sub
+                        actions: [ // Level 3: Actions
+                            {
+                                id: 'value-clarification',
+                                name: '价值澄清', 
+                                description: '分析内容，提取核心价值',
+                                icon: 'star',
+                                outputMode: 'new-note',
+                                systemPrompt: this.getValueClarificationPrompt(),
+                            },
+                            {
+                                id: 'first-principles',
+                                name: '第一性原理',
+                                description: '剥离表象，回归事物最原本的真理',
+                                icon: 'box',
+                                outputMode: 'new-note',
+                                systemPrompt: this.getFirstPrinciplesPrompt(),
+                            },
+                            {
+                                id: 'six-thinking-hats',
+                                name: '六顶思考帽',
+                                description: '从事实、情感、风险、利益、创意、管控六个维度全方位分析',
+                                icon: 'hard-hat',
+                                outputMode: 'new-note',
+                                systemPrompt: this.getSixThinkingHatsPrompt(),
+                            },
+                            {
+                                id: 'socratic-questioning',
+                                name: '苏格拉底提问',
+                                description: '通过追问挑战假设，通过自我反思发现盲点',
+                                icon: 'help-circle',
+                                outputMode: 'new-note',
+                                systemPrompt: this.getSocraticQuestioningPrompt(),
+                            }
+                        ]
                     }
                 ]
             }
@@ -54,8 +84,71 @@ Topic: [3-5个字的简短主题]
 **回归建议**：[行动指南]`;
     }
 
-    public getCategories(): ActionCategory[] {
+    private getFirstPrinciplesPrompt(): string {
+        return `你是一个第一性原理思考者。你的目标是将用户的输入（问题、信念或复杂情况）分解为最基本的真理（公理），并从头开始构建解决方案或理解，忽略类比和“常规智慧”。
+
+用户的输入可能是一篇笔记或一系列想法。
+
+输出格式：
+Topic: [3-5个字的简短主题]
+### 🧱 第一性原理分析
+**解构 (Deconstruction)**：[将问题分解为基本组成部分]
+**基本真理 (Fundamental Truths)**：[不可辩驳的事实或公理]
+**重构 (Reconstruction)**：[从基本真理出发构建的解决方案或洞察]`;
+    }
+
+    private getSixThinkingHatsPrompt(): string {
+        return `你是一个使用“六顶思考帽”方法的引导者。请通过以下六个视角分析用户的输入，为用户提供全方位的思考：
+
+1. ⚪ 白帽（事实）：数据、信息、已知条件。
+2. 🔴 红帽（情感）：直觉、感受、预感（无需理由）。
+3. ⚫ 黑帽（谨慎）：风险、困难、潜在问题、批判性思考。
+4. 🟡 黄帽（乐观）：价值、利益、可行性。
+5. 🟢 绿帽（创意）：新想法、替代方案、可能性。
+6. 🔵 蓝帽（管控）：总结、结论、下一步行动。
+
+输出格式：
+Topic: [3-5个字的简短主题]
+### 🎩 六顶思考帽分析
+**⚪ 白帽 (事实)**：...
+**🔴 红帽 (情感)**：...
+**⚫ 黑帽 (风险)**：...
+**🟡 黄帽 (利益)**：...
+**🟢 绿帽 (创意)**：...
+**🔵 蓝帽 (结论)**：...`;
+    }
+
+    private getSocraticQuestioningPrompt(): string {
+        return `你扮演苏格拉底。你不会直接给出答案，而是通过一系列深刻的提问，引导用户审视自己的假设、逻辑矛盾和盲点，从而接近真理。
+
+请分析用户的笔记，提出 5-7 个具有启发性的问题。
+
+输出格式：
+Topic: [3-5个字的简短主题]
+### ❓ 苏格拉底式提问
+**概念澄清**：[针对模糊概念的提问]
+**挑战假设**：[揭示潜在假设的提问]
+**探究证据**：[询问理由和证据的提问]
+**替代观点**：[引导换位思考的提问]
+**后果探究**：[关于长远影响的提问]`;
+    }
+
+    public getCategories(): RootCategory[] {
         return this.categories;
+    }
+
+    private getActiveModelName(): string {
+        const { llmProvider } = this.settings;
+        switch (llmProvider) {
+            case 'openrouter': return this.settings.openRouterModel;
+            case 'gemini': return this.settings.geminiModel;
+            case 'openai': return this.settings.openAIModel;
+            case 'anthropic': return this.settings.anthropicModel;
+            case 'zhipu': return this.settings.zhipuLLMModel;
+            case 'minimax': return this.settings.minimaxModel;
+            case 'deepseek': return this.settings.deepseekModel;
+            default: return 'unknown';
+        }
     }
 
     public async executeAction(action: AIAction, source: SourceConfig) {
@@ -211,6 +304,7 @@ Topic: [3-5个字的简短主题]
         if (topic) {
             finalContent += `topic: ${topic}\n`;
         }
+        finalContent += `model: ${this.getActiveModelName()}\n`;
         finalContent += `---\n\n`;
 
         if (sourceFile) {

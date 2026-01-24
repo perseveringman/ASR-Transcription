@@ -46,38 +46,46 @@ export class AISidebarView extends ItemView {
                 }));
 
         // Categories
-        const categories = this.actionManager.getCategories();
+        const rootCategories = this.actionManager.getCategories();
         
-        for (const category of categories) {
-            const catDiv = container.createEl('div', { cls: 'asr-category-section' });
+        for (const rootCat of rootCategories) {
+            const rootDiv = container.createEl('div', { cls: 'asr-root-section' });
             
-            // Category Title
-            const catTitle = catDiv.createEl('div', { cls: 'asr-category-title' });
-            catTitle.createEl('span', { text: category.name });
-            
-            // Actions
-            const actionsDiv = catDiv.createEl('div', { cls: 'asr-actions-list' });
-            
-            for (const action of category.actions) {
-                const actionBtn = actionsDiv.createEl('button', { cls: 'asr-action-button' });
-                
-                if (action.icon) {
-                    const iconSpan = actionBtn.createSpan({ cls: 'asr-action-icon' });
-                    setIcon(iconSpan, action.icon);
-                }
-                
-                actionBtn.createSpan({ text: action.name, cls: 'asr-action-name' });
+            // Level 1: Root Title
+            const rootTitle = rootDiv.createEl('div', { cls: 'asr-root-title' });
+            rootTitle.createEl('span', { text: rootCat.name });
 
-                if (action.description) {
-                    actionBtn.setAttribute('aria-label', action.description);
-                }
+            for (const subCat of rootCat.subCategories) {
+                const subDiv = rootDiv.createEl('div', { cls: 'asr-sub-section' });
 
-                actionBtn.onclick = () => {
-                    const sourceConfig: SourceConfig = {
-                        type: this.currentSourceType
+                // Level 2: Sub Title
+                const subTitle = subDiv.createEl('div', { cls: 'asr-sub-title' });
+                subTitle.createEl('span', { text: subCat.name });
+                
+                // Actions
+                const actionsDiv = subDiv.createEl('div', { cls: 'asr-actions-list' });
+                
+                for (const action of subCat.actions) {
+                    const actionBtn = actionsDiv.createEl('button', { cls: 'asr-action-button' });
+                    
+                    if (action.icon) {
+                        const iconSpan = actionBtn.createSpan({ cls: 'asr-action-icon' });
+                        setIcon(iconSpan, action.icon);
+                    }
+                    
+                    actionBtn.createSpan({ text: action.name, cls: 'asr-action-name' });
+
+                    if (action.description) {
+                        actionBtn.setAttribute('aria-label', action.description);
+                    }
+
+                    actionBtn.onclick = () => {
+                        const sourceConfig: SourceConfig = {
+                            type: this.currentSourceType
+                        };
+                        this.actionManager.executeAction(action, sourceConfig);
                     };
-                    this.actionManager.executeAction(action, sourceConfig);
-                };
+                }
             }
         }
     }
