@@ -1,6 +1,8 @@
 import { App, PluginSettingTab, Setting } from 'obsidian';
 import ASRPlugin from '../main';
-import { InsertPosition, TranscriptionProvider, LLMProvider } from '../types/config';
+import { GeneralSettingsTab } from './settings/general-settings';
+import { TranscriptionSettingsTab } from './settings/transcription-settings';
+import { LLMSettingsTab } from './settings/llm-settings';
 
 export class ASRSettingTab extends PluginSettingTab {
     plugin: ASRPlugin;
@@ -12,104 +14,37 @@ export class ASRSettingTab extends PluginSettingTab {
 
     display(): void {
         const { containerEl } = this;
-
         containerEl.empty();
 
-        // --- Transcription Provider ---
+        const refresh = () => this.display();
+
+        // 1. General Settings
+        new GeneralSettingsTab(containerEl, this.plugin).display();
+
+        // 2. Transcription Settings
+        new TranscriptionSettingsTab(containerEl, this.plugin, refresh).display();
+
+        // 3. LLM Settings
+        new LLMSettingsTab(containerEl, this.plugin, refresh).display();
+
+        // 4. Features Settings (AI Polishing, etc)
         new Setting(containerEl)
-            .setName('Voice transcription')
+            .setName('Features')
             .setHeading();
 
-        new Setting(containerEl)
-            .setName('Transcription provider')
-            .setDesc('Choose the API provider for transcription')
-            .addDropdown(dropdown => dropdown
-                .addOption(TranscriptionProvider.ZHIPU, 'Zhipu AI (glm-asr-2512)')
-                .addOption(TranscriptionProvider.VOLCENGINE, 'VolcEngine doubao')
-                .setValue(this.plugin.settings.transcriptionProvider)
-                .onChange(async (value) => {
-                    this.plugin.settings.transcriptionProvider = value as TranscriptionProvider;
-                    await this.plugin.saveSettings();
-                    this.display(); // Refresh to show/hide relevant fields
-                }));
-
-        if (this.plugin.settings.transcriptionProvider === TranscriptionProvider.ZHIPU) {
-            new Setting(containerEl)
-                .setName('Zhipu API key')
-                .setDesc('Zhipu API key')
-                .addText(text => text
-                    .setPlaceholder('Enter your API key')
-                    .setValue(this.plugin.settings.zhipuApiKey)
-                    .onChange(async (value) => {
-                        this.plugin.settings.zhipuApiKey = value.trim();
-                        await this.plugin.saveSettings();
-                    })
-                    .inputEl.type = 'password');
-        }
-
-        if (this.plugin.settings.transcriptionProvider === TranscriptionProvider.VOLCENGINE) {
-            new Setting(containerEl)
-                .setName('VolcEngine app ID')
-                .setDesc('Your VolcEngine app ID')
-                .addText(text => text
-                    .setPlaceholder('Enter your app ID')
-                    .setValue(this.plugin.settings.volcengineAppId)
-                    .onChange(async (value) => {
-                        this.plugin.settings.volcengineAppId = value.trim();
-                        await this.plugin.saveSettings();
-                    }));
-
-            new Setting(containerEl)
-                .setName('VolcEngine access token')
-                .setDesc('Your VolcEngine access token')
-                .addText(text => text
-                    .setPlaceholder('Enter your access token')
-                    .setValue(this.plugin.settings.volcengineAccessToken)
-                    .onChange(async (value) => {
-                        this.plugin.settings.volcengineAccessToken = value.trim();
-                        await this.plugin.saveSettings();
-                    })
-                    .inputEl.type = 'password');
-        }
-
-        // --- AI Polishing ---
         new Setting(containerEl)
             .setName('AI polishing')
-            .setHeading();
-
-        new Setting(containerEl)
-            .setName('Enable AI polishing')
-            .setDesc('Automatically polish transcribed text using an LLM')
+            .setDesc('Automatically polish transcribed text using the configured LLM provider')
             .addToggle(toggle => toggle
                 .setValue(this.plugin.settings.enableAiPolishing)
                 .onChange(async (value) => {
                     this.plugin.settings.enableAiPolishing = value;
                     await this.plugin.saveSettings();
-                    this.display();
+                    refresh();
                 }));
 
         if (this.plugin.settings.enableAiPolishing) {
-            new Setting(containerEl)
-                .setName('LLM provider')
-                .setDesc('Choose the LLM provider for polishing')
-                .addDropdown(dropdown => dropdown
-                    .addOption(LLMProvider.OPENROUTER, 'OpenRouter')
-                    .addOption(LLMProvider.GEMINI, 'Google Gemini')
-                    .addOption(LLMProvider.OPENAI, 'OpenAI')
-                    .addOption(LLMProvider.ANTHROPIC, 'Anthropic Claude')
-                    .addOption(LLMProvider.ZHIPU, 'Zhipu AI')
-                    .addOption(LLMProvider.MINIMAX, 'Minimax')
-                    .addOption(LLMProvider.DEEPSEEK, 'DeepSeek')
-                    .setValue(this.plugin.settings.llmProvider)
-                    .onChange(async (value) => {
-                        this.plugin.settings.llmProvider = value as LLMProvider;
-                        await this.plugin.saveSettings();
-                        this.display();
-                    }));
-
-            this.displayLLMSettings(containerEl);
-
-            new Setting(containerEl)
+             new Setting(containerEl)
                 .setName('System prompt')
                 .setDesc('Instructions for the AI on how to polish the text')
                 .addTextArea(text => text
@@ -122,110 +57,7 @@ export class ASRSettingTab extends PluginSettingTab {
                     .inputEl.rows = 5);
         }
 
-        // --- Insertion ---
-        new Setting(containerEl)
-            .setName('Insertion')
-            .setHeading();
-
-        new Setting(containerEl)
-            .setName('Insert position')
-            .setDesc('Where to insert the transcribed text')
-            .addDropdown(dropdown => dropdown
-                .addOption(InsertPosition.CURSOR, 'At cursor')
-                .addOption(InsertPosition.DOCUMENT_END, 'At document end')
-                .addOption(InsertPosition.NEW_NOTE, 'In a new note')
-                .setValue(this.plugin.settings.insertPosition)
-                .onChange(async (value) => {
-                    this.plugin.settings.insertPosition = value as InsertPosition;
-                    await this.plugin.saveSettings();
-                }));
-
-        new Setting(containerEl)
-            .setName('Add timestamp')
-            .setDesc('Prepend a timestamp to the transcribed text')
-            .addToggle(toggle => toggle
-                .setValue(this.plugin.settings.addTimestamp)
-                .onChange(async (value) => {
-                    this.plugin.settings.addTimestamp = value;
-                    await this.plugin.saveSettings();
-                }));
-
-        new Setting(containerEl)
-            .setName('Add separator')
-            .setDesc('Add a separator before the transcribed text')
-            .addToggle(toggle => toggle
-                .setValue(this.plugin.settings.addSeparator)
-                .onChange(async (value) => {
-                    this.plugin.settings.addSeparator = value;
-                    await this.plugin.saveSettings();
-                }));
-
-        // --- Storage ---
-        new Setting(containerEl)
-            .setName('Storage')
-            .setHeading();
-
-        new Setting(containerEl)
-            .setName('Audio save folder')
-            .setDesc('Folder where recorded audio files will be saved')
-            .addText(text => text
-                .setPlaceholder('/')
-                .setValue(this.plugin.settings.audioSaveFolder)
-                .onChange(async (value) => {
-                    this.plugin.settings.audioSaveFolder = value;
-                    await this.plugin.saveSettings();
-                }));
-
-        new Setting(containerEl)
-            .setName('Voice note folder')
-            .setDesc('Folder where new voice notes will be created')
-            .addText(text => text
-                .setPlaceholder('/')
-                .setValue(this.plugin.settings.voiceNoteFolder)
-                .onChange(async (value) => {
-                    this.plugin.settings.voiceNoteFolder = value;
-                    await this.plugin.saveSettings();
-                }));
-
-        new Setting(containerEl)
-            .setName('Template file path')
-            .setDesc('Path to the template file for new voice notes (e.g., templates/voice-note.md)')
-            .addText(text => text
-                .setPlaceholder('templates/voice-note.md')
-                .setValue(this.plugin.settings.templatePath)
-                .onChange(async (value) => {
-                    this.plugin.settings.templatePath = value;
-                    await this.plugin.saveSettings();
-                }));
-
-        // --- Transcription ---
-        new Setting(containerEl)
-            .setName('Transcription')
-            .setHeading();
-
-        new Setting(containerEl)
-            .setName('Context prompt')
-            .setDesc('Provide context to improve transcription accuracy')
-            .addTextArea(text => text
-                .setPlaceholder('E.g., this is a technical meeting about...')
-                .setValue(this.plugin.settings.contextPrompt)
-                .onChange(async (value) => {
-                    this.plugin.settings.contextPrompt = value;
-                    await this.plugin.saveSettings();
-                }));
-
-        new Setting(containerEl)
-            .setName('Hotwords')
-            .setDesc('Comma-separated list of words to prioritize (e.g., specialized terms)')
-            .addText(text => text
-                .setPlaceholder('Word1, word2')
-                .setValue(this.plugin.settings.hotwords.join(', '))
-                .onChange(async (value) => {
-                    this.plugin.settings.hotwords = value.split(',').map(s => s.trim()).filter(s => s.length > 0);
-                    await this.plugin.saveSettings();
-                }));
-
-        // --- Advanced ---
+        // 5. Advanced Settings
         new Setting(containerEl)
             .setName('Advanced')
             .setHeading();
@@ -239,7 +71,7 @@ export class ASRSettingTab extends PluginSettingTab {
                     this.plugin.settings.debugLogging = value;
                     await this.plugin.saveSettings();
                 }));
-
+        
         new Setting(containerEl)
             .setName('Retry count')
             .setDesc('Number of times to retry failed API calls')
@@ -265,194 +97,5 @@ export class ASRSettingTab extends PluginSettingTab {
                         await this.plugin.saveSettings();
                     }
                 }));
-    }
-
-    private displayLLMSettings(containerEl: HTMLElement) {
-        const provider = this.plugin.settings.llmProvider;
-
-        if (provider === LLMProvider.OPENROUTER) {
-            new Setting(containerEl)
-                .setName('OpenRouter API key')
-                .setDesc('Your OpenRouter API key')
-                .addText(text => text
-                    .setPlaceholder('sk-or-...')
-                    .setValue(this.plugin.settings.openRouterApiKey)
-                    .onChange(async (value) => {
-                        this.plugin.settings.openRouterApiKey = value.trim();
-                        await this.plugin.saveSettings();
-                    })
-                    .inputEl.type = 'password');
-
-            new Setting(containerEl)
-                .setName('Model')
-                .setDesc('OpenRouter model ID')
-                .addText(text => text
-                    .setPlaceholder('google/gemini-2.0-flash-exp:free')
-                    .setValue(this.plugin.settings.openRouterModel)
-                    .onChange(async (value) => {
-                        this.plugin.settings.openRouterModel = value.trim();
-                        await this.plugin.saveSettings();
-                    }));
-        } else if (provider === LLMProvider.GEMINI) {
-            new Setting(containerEl)
-                .setName('Gemini API key')
-                .setDesc('Your Google Gemini API key')
-                .addText(text => text
-                    .setPlaceholder('Enter your API key')
-                    .setValue(this.plugin.settings.geminiApiKey)
-                    .onChange(async (value) => {
-                        this.plugin.settings.geminiApiKey = value.trim();
-                        await this.plugin.saveSettings();
-                    })
-                    .inputEl.type = 'password');
-
-            new Setting(containerEl)
-                .setName('Model')
-                .setDesc('Gemini model ID')
-                .addText(text => text
-                    .setPlaceholder('gemini-2.0-flash')
-                    .setValue(this.plugin.settings.geminiModel)
-                    .onChange(async (value) => {
-                        this.plugin.settings.geminiModel = value.trim();
-                        await this.plugin.saveSettings();
-                    }));
-        } else if (provider === LLMProvider.OPENAI) {
-            new Setting(containerEl)
-                .setName('OpenAI API key')
-                .setDesc('Your OpenAI API key')
-                .addText(text => text
-                    .setPlaceholder('sk-...')
-                    .setValue(this.plugin.settings.openAIApiKey)
-                    .onChange(async (value) => {
-                        this.plugin.settings.openAIApiKey = value.trim();
-                        await this.plugin.saveSettings();
-                    })
-                    .inputEl.type = 'password');
-
-            new Setting(containerEl)
-                .setName('Model')
-                .setDesc('OpenAI model ID')
-                .addText(text => text
-                    .setPlaceholder('gpt-4o-mini')
-                    .setValue(this.plugin.settings.openAIModel)
-                    .onChange(async (value) => {
-                        this.plugin.settings.openAIModel = value.trim();
-                        await this.plugin.saveSettings();
-                    }));
-            
-            new Setting(containerEl)
-                .setName('Base URL')
-                .setDesc('Custom API Base URL (optional)')
-                .addText(text => text
-                    .setPlaceholder('https://api.openai.com/v1')
-                    .setValue(this.plugin.settings.openAIBaseUrl)
-                    .onChange(async (value) => {
-                        this.plugin.settings.openAIBaseUrl = value.trim();
-                        await this.plugin.saveSettings();
-                    }));
-        } else if (provider === LLMProvider.ANTHROPIC) {
-            new Setting(containerEl)
-                .setName('Anthropic API key')
-                .setDesc('Your Anthropic API key')
-                .addText(text => text
-                    .setPlaceholder('sk-ant-...')
-                    .setValue(this.plugin.settings.anthropicApiKey)
-                    .onChange(async (value) => {
-                        this.plugin.settings.anthropicApiKey = value.trim();
-                        await this.plugin.saveSettings();
-                    })
-                    .inputEl.type = 'password');
-
-            new Setting(containerEl)
-                .setName('Model')
-                .setDesc('Claude model ID')
-                .addText(text => text
-                    .setPlaceholder('claude-3-5-sonnet-latest')
-                    .setValue(this.plugin.settings.anthropicModel)
-                    .onChange(async (value) => {
-                        this.plugin.settings.anthropicModel = value.trim();
-                        await this.plugin.saveSettings();
-                    }));
-        } else if (provider === LLMProvider.ZHIPU) {
-            new Setting(containerEl)
-                .setName('Zhipu LLM API key')
-                .setDesc('Your Zhipu AI API key (can be same as ASR key)')
-                .addText(text => text
-                    .setPlaceholder('Enter your API key')
-                    .setValue(this.plugin.settings.zhipuLLMApiKey)
-                    .onChange(async (value) => {
-                        this.plugin.settings.zhipuLLMApiKey = value.trim();
-                        await this.plugin.saveSettings();
-                    })
-                    .inputEl.type = 'password');
-
-            new Setting(containerEl)
-                .setName('Model')
-                .setDesc('Zhipu model ID')
-                .addText(text => text
-                    .setPlaceholder('glm-4-flash')
-                    .setValue(this.plugin.settings.zhipuLLMModel)
-                    .onChange(async (value) => {
-                        this.plugin.settings.zhipuLLMModel = value.trim();
-                        await this.plugin.saveSettings();
-                    }));
-        } else if (provider === LLMProvider.MINIMAX) {
-            new Setting(containerEl)
-                .setName('Minimax API key')
-                .setDesc('Your Minimax API key')
-                .addText(text => text
-                    .setPlaceholder('Enter your API key')
-                    .setValue(this.plugin.settings.minimaxApiKey)
-                    .onChange(async (value) => {
-                        this.plugin.settings.minimaxApiKey = value.trim();
-                        await this.plugin.saveSettings();
-                    })
-                    .inputEl.type = 'password');
-
-            new Setting(containerEl)
-                .setName('Group ID')
-                .setDesc('Minimax Group ID')
-                .addText(text => text
-                    .setPlaceholder('Enter your Group ID')
-                    .setValue(this.plugin.settings.minimaxGroupId)
-                    .onChange(async (value) => {
-                        this.plugin.settings.minimaxGroupId = value.trim();
-                        await this.plugin.saveSettings();
-                    }));
-
-            new Setting(containerEl)
-                .setName('Model')
-                .setDesc('Minimax model ID')
-                .addText(text => text
-                    .setPlaceholder('abab6.5s-chat')
-                    .setValue(this.plugin.settings.minimaxModel)
-                    .onChange(async (value) => {
-                        this.plugin.settings.minimaxModel = value.trim();
-                        await this.plugin.saveSettings();
-                    }));
-        } else if (provider === LLMProvider.DEEPSEEK) {
-            new Setting(containerEl)
-                .setName('DeepSeek API key')
-                .setDesc('Your DeepSeek API key')
-                .addText(text => text
-                    .setPlaceholder('sk-...')
-                    .setValue(this.plugin.settings.deepseekApiKey)
-                    .onChange(async (value) => {
-                        this.plugin.settings.deepseekApiKey = value.trim();
-                        await this.plugin.saveSettings();
-                    })
-                    .inputEl.type = 'password');
-
-            new Setting(containerEl)
-                .setName('Model')
-                .setDesc('DeepSeek model ID')
-                .addText(text => text
-                    .setPlaceholder('deepseek-chat')
-                    .setValue(this.plugin.settings.deepseekModel)
-                    .onChange(async (value) => {
-                        this.plugin.settings.deepseekModel = value.trim();
-                        await this.plugin.saveSettings();
-                    }));
-        }
     }
 }

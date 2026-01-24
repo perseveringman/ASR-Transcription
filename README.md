@@ -1,62 +1,35 @@
-# Obsidian ASR-Transcription Plugin
+# Obsidian ASR & Intelligence Plugin
 
-English | [简体中文](README_CN.md)
+An Obsidian plugin that transforms your voice into polished, actionable text. It combines powerful **Speech-to-Text (ASR)** engines with **Large Language Models (LLM)** to transcribe, polish, and organize your thoughts.
 
-A speech-to-text plugin for Obsidian, supporting Zhipu AI and Volcengine Doubao models.
+## Key Features
 
-## Features
+*   **🎙️ Voice Transcription**: Record directly in Obsidian or transcribe existing audio files.
+*   **✨ AI Polishing**: Automatically fix typos, remove filler words ("um", "ah"), and improve readability using your favorite LLM.
+*   **🔌 Multi-Provider Support**:
+    *   **ASR**: Zhipu AI, Volcengine (Doubao).
+    *   **LLM**: OpenAI, Gemini, Claude, DeepSeek, Minimax, Zhipu GLM, OpenRouter.
+*   **📝 Flexible Insertion**: Insert text at cursor, end of document, or create a new note with a custom template.
+*   **📄 Long Audio Support**: Automatically handles large files by chunking.
 
-- **Voice Recording**: Record audio directly in Obsidian and transcribe in real-time.
-- **File Transcription**: Transcribe audio files referenced in notes or local files.
-- **Context Menu Support**: Right-click on audio files in the file list to quickly transcribe to a new note.
-- **Multi-Model Support**:
-  - **Zhipu AI (GLM-ASR-2512)**: Ideal for short audio (auto-slicing for clips under 30 seconds), cost-effective.
-  - **Volcengine Doubao (Standard)**: Supports long audio up to 4 hours, single file up to 512MB, perfect for meetings and lectures.
-- **Flexible Insertion**: Insert at cursor, end of document, or create a new note.
-- **Highly Customizable**: Supports timestamps, separators, hot words, context prompts, and custom templates.
+## Quick Start
 
-## Installation
+1.  **Install**: Download `main.js`, `manifest.json`, `styles.css` to `.obsidian/plugins/asr-transcription/` or install via BRAT.
+2.  **Configure Transcription**:
+    *   Go to Settings -> ASR Transcription.
+    *   Choose a provider (e.g., Zhipu AI) and enter your API Key.
+3.  **Configure AI (Optional)**:
+    *   Enable "AI Polishing".
+    *   Choose an LLM Provider (e.g., OpenAI) and enter your API Key.
+4.  **Use**:
+    *   Open Command Palette (`Cmd/Ctrl + P`) -> "ASR: Open transcription modal".
+    *   Or right-click an audio file -> "Transcribe audio".
 
-1. Create a folder named `obsidian-asr` in your vault's `.obsidian/plugins/` directory.
-2. Copy `main.js`, `manifest.json`, and `styles.css` files into that folder.
-3. Enable the plugin in Obsidian's "Community Plugins" settings.
+## Documentation
 
-## Configuration
-
-You can select your preferred service provider in the plugin settings.
-
-### 1. Zhipu AI Setup
-- **Get API Key**: Visit [Zhipu AI Open Platform](https://open.bigmodel.cn/).
-- **Activate Service**: Register and log in, then obtain your `API Key` from the console.
-- **Limitation**: Single audio segment recommended under 30 seconds (plugin auto-slices longer audio).
-
-### 2. Volcengine Doubao Setup
-- **Get Credentials**: Visit [Volcengine Console](https://console.volcengine.com/).
-- **Activate Service**: Search for "Speech Recognition" and enable the service.
-- **Get App ID**: Create a project in the "Speech Recognition" console to obtain your `App ID`.
-- **Get Access Token**: Obtain your `Access Token` from "API Key Management" in the console.
-- **Resource Authorization**: Ensure you have access to `volc.seedasr.auc` (Doubao Audio Recognition Model 2.0 Standard).
-- **Advantages**: Single file up to 512MB, duration up to 4 hours, no manual slicing required.
-
-## Usage
-
-### Voice Recording & Transcription
-- Use the command palette (`Ctrl/Cmd + P`) and search for "Open transcription modal".
-- Click "Start Recording" to begin recording.
-- Click "Stop Recording" to stop and trigger transcription.
-
-### Transcribe Audio Referenced in Notes
-- In a note containing audio references, execute the command "Transcribe referenced audio in current note".
-- The plugin will identify audio files in the note and insert transcription results below.
-
-### Quick Transcription via Context Menu
-- In Obsidian's left file list, right-click on any audio file (supports mp3, wav, m4a, ogg, etc.).
-- Select "Transcribe audio", and the plugin will automatically transcribe and create a new Markdown note based on the template.
-
-## Privacy Notice
-
-Audio data will be uploaded to your chosen service provider (Zhipu AI or Volcengine) for processing. The plugin itself does not store your audio anywhere beyond local storage.
+*   [**Provider Setup Guide**](docs/providers.md): Detailed instructions on getting API keys for all supported services.
+*   [**Architecture & Development**](docs/architecture.md): For developers who want to contribute or understand the code.
 
 ## License
 
-MIT
+MIT License

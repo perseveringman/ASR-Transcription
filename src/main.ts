@@ -3,25 +3,27 @@ import { DEFAULT_SETTINGS, PluginSettings } from './types/config';
 import { ASRSettingTab } from './ui/settings-tab';
 import { AudioRecorder } from './services/audio-recorder';
 import { RecordingModal } from './ui/recording-view';
-import { TranscriptionServiceFactory } from './services/transcription/factory';
 import { TextInserter } from './services/text-inserter';
 import { VaultUtils } from './utils/vault-utils';
 import { AudioSelectionModal } from './ui/audio-selection-modal';
-import { AudioConverter } from './services/audio-converter';
-import { LLMServiceFactory } from './services/llm/factory';
+import { TranscriptionManager } from './managers/transcription-manager';
+import { LLMManager } from './managers/llm-manager';
 
 export default class ASRPlugin extends Plugin {
     settings!: PluginSettings;
     recorder!: AudioRecorder;
     textInserter!: TextInserter;
+    transcriptionManager!: TranscriptionManager;
+    llmManager!: LLMManager;
 
     async onload() {
         await this.loadSettings();
 
         this.recorder = new AudioRecorder();
         this.textInserter = new TextInserter(this.app, this.settings);
+        this.transcriptionManager = new TranscriptionManager(this.settings);
+        this.llmManager = new LLMManager(this.settings);
 
-        // This adds a settings tab so the user can configure various aspects of the plugin
         this.addSettingTab(new ASRSettingTab(this.app, this));
 
         // Register commands
@@ -95,106 +97,9 @@ export default class ASRPlugin extends Plugin {
         );
     }
 
-    /**
-     * Check if a file is an audio file based on its extension
-     */
     private isAudioFile(file: TFile): boolean {
         const audioExtensions = ['mp3', 'wav', 'm4a', 'ogg', 'webm', 'flac', 'aac'];
         return audioExtensions.includes(file.extension.toLowerCase());
-    }
-
-    /**
-     * Unified transcription processing logic
-     * Handles chunking based on service constraints and result aggregation
-     */
-    private async processTranscription(audio: Blob | TFile): Promise<string> {
-        const transcriptionService = TranscriptionServiceFactory.create(this.settings);
-        const constraints = transcriptionService.getConstraints();
-        const notice = new Notice(`Preparing transcription...`, 0);
-
-        try {
-            let arrayBuffer: ArrayBuffer;
-            let blob: Blob;
-            let extension = '';
-
-            if (audio instanceof TFile) {
-                arrayBuffer = await this.app.vault.readBinary(audio);
-                extension = audio.extension.toLowerCase();
-                blob = new Blob([arrayBuffer], { type: this.getMimeType(audio) });
-            } else {
-                arrayBuffer = await audio.arrayBuffer();
-                blob = audio;
-                if (audio instanceof File) {
-                    extension = audio.name.split('.').pop()?.toLowerCase() || '';
-                } else {
-                    extension = blob.type.includes('wav') ? 'wav' : (blob.type.includes('mp4') || blob.type.includes('m4a') ? 'm4a' : 'mp3');
-                }
-            }
-            
-            // Check duration for chunking
-            const AudioContextClass = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
-            const audioContext = new AudioContextClass();
-            const audioBuffer = await audioContext.decodeAudioData(arrayBuffer.slice(0)); 
-            const duration = audioBuffer.duration;
-            await audioContext.close();
-
-            let fullText = '';
-
-            // Chunk if duration or size exceeds limits
-            const needsChunking = duration > constraints.maxDurationSeconds || blob.size > constraints.maxFileSizeBytes;
-
-            if (needsChunking) {
-                notice.setMessage(`Splitting audio into chunks...`);
-                // Use the smaller of the two constraints to be safe
-                const chunkDuration = Math.min(constraints.maxDurationSeconds, 30); // Default to 30s if max is huge, for progress feedback
-                const chunks = await AudioConverter.splitAndConvert(blob, chunkDuration);
-                
-                for (let i = 0; i < chunks.length; i++) {
-                    notice.setMessage(`Transcribing: chunk ${i + 1}/${chunks.length}...`);
-                    const result = await transcriptionService.transcribe(chunks[i]);
-                    fullText += (fullText ? ' ' : '') + result.text.trim();
-                }
-            } else {
-                let audioToUpload = blob;
-                
-                if (extension === 'm4a') {
-                    notice.setMessage(`Converting to WAV...`);
-                    audioToUpload = await AudioConverter.convertToWav(blob);
-                }
-
-                const result = await transcriptionService.transcribe(audioToUpload);
-                fullText = result.text;
-            }
-
-            notice.hide();
-            return fullText;
-        } catch (err: unknown) {
-            notice.hide();
-            throw err;
-        }
-    }
-
-    private async processAiPolishing(text: string): Promise<string> {
-        if (!this.settings.enableAiPolishing) {
-            return '';
-        }
-
-        const notice = new Notice('Polishing text with AI...', 0);
-        try {
-            const llmService = LLMServiceFactory.create(this.settings);
-            const polishedText = await llmService.complete([
-                { role: 'system', content: this.settings.systemPrompt },
-                { role: 'user', content: text }
-            ]);
-            notice.hide();
-            return polishedText;
-        } catch (err) {
-            notice.hide();
-            console.error('AI Polishing failed:', err);
-            const message = err instanceof Error ? err.message : String(err);
-            new Notice(`AI Polishing failed: ${message}`, 5000); // Show for 5s
-            return '';
-        }
     }
 
     /**
@@ -203,8 +108,8 @@ export default class ASRPlugin extends Plugin {
      */
     async handleAudioFileTranscription(file: TFile) {
         try {
-            const fullText = await this.processTranscription(file);
-            const aiText = await this.processAiPolishing(fullText);
+            const fullText = await this.transcriptionManager.transcribe(file, this.app);
+            const aiText = await this.llmManager.polish(fullText);
             await this.createTranscriptionNote(fullText, file, aiText);
             new Notice(`Transcription of ${file.name} complete!`);
         } catch (err: unknown) {
@@ -240,9 +145,17 @@ export default class ASRPlugin extends Plugin {
                 new Notice(`Audio saved: ${fileName}`);
             }
 
-            // 2. Process transcription
-            const fullText = await this.processTranscription(audio);
-            const aiText = await this.processAiPolishing(fullText);
+            // 2. Process transcription using Manager
+            const fullText = await this.transcriptionManager.transcribe(audio, this.app);
+            
+            // 3. Process AI Polishing using Manager
+            let aiText = '';
+            try {
+                aiText = await this.llmManager.polish(fullText);
+            } catch (err: unknown) {
+                 const message = err instanceof Error ? err.message : String(err);
+                 new Notice(`AI Polishing failed: ${message}`, 5000);
+            }
 
             await this.textInserter.insert(fullText, audioFile || undefined, aiText);
             notice.hide();
@@ -257,8 +170,16 @@ export default class ASRPlugin extends Plugin {
 
     async handleFileTranscription(file: TFile) {
         try {
-            const fullText = await this.processTranscription(file);
-            const aiText = await this.processAiPolishing(fullText);
+            const fullText = await this.transcriptionManager.transcribe(file, this.app);
+            
+            let aiText = '';
+            try {
+                aiText = await this.llmManager.polish(fullText);
+            } catch (err: unknown) {
+                 const message = err instanceof Error ? err.message : String(err);
+                 new Notice(`AI Polishing failed: ${message}`, 5000);
+            }
+
             await this.textInserter.insert(fullText, file, aiText);
             new Notice(`Transcription of ${file.name} complete!`);
         } catch (err: unknown) {
@@ -366,17 +287,6 @@ export default class ASRPlugin extends Plugin {
         return result;
     }
 
-    private getMimeType(file: TFile): string {
-        switch (file.extension.toLowerCase()) {
-            case 'mp3': return 'audio/mpeg';
-            case 'wav': return 'audio/wav';
-            case 'm4a': return 'audio/mp4';
-            case 'ogg': return 'audio/ogg';
-            case 'webm': return 'audio/webm';
-            default: return 'application/octet-stream';
-        }
-    }
-
     onunload() {
         if (this.recorder) {
             this.recorder.stop();
@@ -389,7 +299,9 @@ export default class ASRPlugin extends Plugin {
 
     async saveSettings() {
         await this.saveData(this.settings);
-        // Refresh text inserter settings
+        // Update Managers
+        this.transcriptionManager.updateSettings(this.settings);
+        this.llmManager.updateSettings(this.settings);
         this.textInserter = new TextInserter(this.app, this.settings);
     }
 }
