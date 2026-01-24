@@ -16,7 +16,7 @@ export class ASRSettingTab extends PluginSettingTab {
         containerEl.empty();
 
         new Setting(containerEl)
-            .setName('ASR voice transcription')
+            .setName('Asr voice transcription')
             .setHeading();
 
         new Setting(containerEl)
@@ -146,7 +146,7 @@ export class ASRSettingTab extends PluginSettingTab {
                 }));
 
         new Setting(containerEl)
-            .setName('Transcription options')
+            .setName('Transcription')
             .setHeading();
 
         new Setting(containerEl)
@@ -164,7 +164,7 @@ export class ASRSettingTab extends PluginSettingTab {
             .setName('Hotwords')
             .setDesc('Comma-separated list of words to prioritize (e.g., specialized terms)')
             .addText(text => text
-                .setPlaceholder('word1, word2')
+                .setPlaceholder('Word1, word2')
                 .setValue(this.plugin.settings.hotwords.join(', '))
                 .onChange(async (value) => {
                     this.plugin.settings.hotwords = value.split(',').map(s => s.trim()).filter(s => s.length > 0);

@@ -1,5 +1,5 @@
 import { requestUrl } from 'obsidian';
-import { TranscriptionService, TranscriptionResult, TranscriptionOptions, TranscriptionError, TranscriptionErrorType, TranscriptionConstraints } from '../../types/transcription';
+import { TranscriptionService, TranscriptionResult, TranscriptionError, TranscriptionErrorType, TranscriptionConstraints } from '../../types/transcription';
 import { ZhipuTranscriptionResponse, ZhipuErrorResponse } from '../../types/zhipu';
 import { PluginSettings } from '../../types/config';
 
@@ -9,7 +9,7 @@ export class ZhipuTranscriptionService implements TranscriptionService {
 
     constructor(private settings: PluginSettings) {}
 
-    async transcribe(audio: File | Blob, options?: TranscriptionOptions): Promise<TranscriptionResult> {
+    async transcribe(audio: File | Blob): Promise<TranscriptionResult> {
         if (!this.settings.zhipuApiKey) {
             throw new TranscriptionError(
                 TranscriptionErrorType.AUTH_ERROR,
@@ -112,7 +112,7 @@ export class ZhipuTranscriptionService implements TranscriptionService {
                 const status = response.status;
                 
                 if (status === 401) {
-                    throw new TranscriptionError(TranscriptionErrorType.AUTH_ERROR, 'Invalid API Key');
+                    throw new TranscriptionError(TranscriptionErrorType.AUTH_ERROR, 'Invalid api key');
                 } else if (status === 413) {
                     throw new TranscriptionError(TranscriptionErrorType.FILE_TOO_LARGE, 'Audio file too large (max 25MB)');
                 } else if (status >= 500 || status === 429) {

@@ -1,5 +1,5 @@
 import { requestUrl } from 'obsidian';
-import { TranscriptionService, TranscriptionResult, TranscriptionOptions, TranscriptionError, TranscriptionErrorType, TranscriptionConstraints } from '../../types/transcription';
+import { TranscriptionService, TranscriptionResult, TranscriptionError, TranscriptionErrorType, TranscriptionConstraints } from '../../types/transcription';
 import { PluginSettings } from '../../types/config';
 import { VolcengineFlashResponse } from '../../types/volcengine';
 
@@ -10,7 +10,7 @@ export class VolcengineTranscriptionService implements TranscriptionService {
 
     constructor(private settings: PluginSettings) {}
 
-    async transcribe(audio: File | Blob, options?: TranscriptionOptions): Promise<TranscriptionResult> {
+    async transcribe(audio: File | Blob): Promise<TranscriptionResult> {
         if (!this.settings.volcengineAppId || !this.settings.volcengineAccessToken) {
             throw new TranscriptionError(
                 TranscriptionErrorType.AUTH_ERROR,
@@ -84,7 +84,7 @@ export class VolcengineTranscriptionService implements TranscriptionService {
         }
     }
 
-    private async pollForResult(requestId: string, attempt = 0): Promise<TranscriptionResult> {
+    private async pollForResult(requestId: string): Promise<TranscriptionResult> {
         const MAX_POLLING_ATTEMPTS = 60; // 2 minutes with 2s interval
         const POLLING_INTERVAL = 2000;
 

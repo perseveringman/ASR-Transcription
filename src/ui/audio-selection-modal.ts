@@ -19,7 +19,7 @@ export class AudioSelectionModal extends FuzzySuggestModal<TFile> {
         return file.path;
     }
 
-    onChooseItem(file: TFile, evt: MouseEvent | KeyboardEvent): void {
+    onChooseItem(file: TFile): void {
         this.onSelect(file);
     }
 }
