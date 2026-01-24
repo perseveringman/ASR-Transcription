@@ -1,7 +1,8 @@
 import { App, MarkdownView, Notice, TFile, moment } from 'obsidian';
 import { LLMManager } from './llm-manager';
-import { ActionCategory, AIAction } from '../types/action';
+import { ActionCategory, AIAction, SourceConfig } from '../types/action';
 import { PluginSettings } from '../types/config';
+import { TimeRangeModal } from '../ui/modals/time-range-modal';
 
 export class ActionManager {
     private categories: ActionCategory[] = [];
@@ -16,6 +17,7 @@ export class ActionManager {
         this.settings = settings;
     }
 
+    // ... loadDefaultActions ...
     private loadDefaultActions() {
         this.categories = [
             {
@@ -24,12 +26,20 @@ export class ActionManager {
                 actions: [
                     {
                         id: 'value-clarification',
-                        name: '价值澄清', // Value Clarification
-                        description: '从笔记里找出你真正看重的东西，从混乱回到核心',
+                        name: '价值澄清', 
+                        description: '分析内容，提取核心价值',
                         icon: 'star',
                         outputMode: 'new-note',
-                        systemPrompt: `你是一个深度思考助手，擅长从杂乱的信息中提取核心价值和底层逻辑。
-用户的输入是一篇笔记，可能包含碎片化的想法、情绪表达或事实记录。
+                        systemPrompt: this.getValueClarificationPrompt(),
+                    }
+                ]
+            }
+        ];
+    }
+    
+    private getValueClarificationPrompt(): string {
+        return `你是一个深度思考助手，擅长从杂乱的信息中提取核心价值和底层逻辑。
+用户的输入是一篇或多篇笔记，可能包含碎片化的想法、情绪表达或事实记录。
 你的任务是：
 1. 识别笔记中隐含的“价值观”或“关注点”。
 2. 过滤掉噪音和表面情绪，找到用户真正看重的东西。
@@ -40,18 +50,22 @@ export class ActionManager {
 ### 💎 价值澄清
 **核心关注**：[总结]
 **潜在洞察**：[深层分析]
-**回归建议**：[行动指南]`,
-                    }
-                ]
-            }
-        ];
+**回归建议**：[行动指南]`;
     }
 
     public getCategories(): ActionCategory[] {
         return this.categories;
     }
 
-    public async executeAction(action: AIAction) {
+    public async executeAction(action: AIAction, source: SourceConfig) {
+        if (source.type === 'date-range') {
+            new TimeRangeModal(this.app, (start, end) => {
+                this.executeDateRangeAction(action, start, end);
+            }).open();
+            return;
+        }
+
+        // Default: current-note
         let activeView = this.app.workspace.getActiveViewOfType(MarkdownView);
         
         // If focus is in sidebar, getActiveViewOfType might return null.
@@ -80,6 +94,40 @@ export class ActionManager {
             return;
         }
 
+        this.runLLM(action, content, activeView.file);
+    }
+
+    private async executeDateRangeAction(action: AIAction, start: moment.Moment, end: moment.Moment) {
+        const files = this.fetchFilesByDateRange(start, end);
+        if (files.length === 0) {
+            new Notice('No notes found in the selected date range.');
+            return;
+        }
+
+        new Notice(`Processing ${files.length} notes...`);
+
+        let combinedContent = `Analysis Period: ${start.format('YYYY-MM-DD')} to ${end.format('YYYY-MM-DD')}\n\n`;
+        for (const file of files) {
+            const content = await this.app.vault.read(file);
+            combinedContent += `\n\n--- Note: [[${file.basename}]] ---\n${content}`;
+        }
+
+        this.runLLM(action, combinedContent, null, files, start, end);
+    }
+
+    private fetchFilesByDateRange(start: moment.Moment, end: moment.Moment): TFile[] {
+        const allFiles = this.app.vault.getMarkdownFiles();
+        // Set start to beginning of day and end to end of day
+        const startTime = start.clone().startOf('day').valueOf();
+        const endTime = end.clone().endOf('day').valueOf();
+
+        return allFiles.filter(file => {
+            const ctime = file.stat.ctime;
+            return ctime >= startTime && ctime <= endTime;
+        });
+    }
+
+    private async runLLM(action: AIAction, content: string, sourceFile: TFile | null, sourceFiles: TFile[] = [], start?: moment.Moment, end?: moment.Moment) {
         new Notice(`Running AI Action: ${action.name}...`);
 
         try {
@@ -88,7 +136,7 @@ export class ActionManager {
                 { role: 'user', content: content }
             ]);
 
-            await this.handleOutput(action, result, activeView);
+            await this.handleOutput(action, result, sourceFile, sourceFiles, start, end);
             new Notice('AI Action completed!');
         } catch (error) {
             console.error('AI Action failed:', error);
@@ -97,31 +145,35 @@ export class ActionManager {
         }
     }
 
-    private async handleOutput(action: AIAction, text: string, view: MarkdownView) {
-        const editor = view.editor;
-
+    private async handleOutput(action: AIAction, text: string, sourceFile: TFile | null, sourceFiles: TFile[] = [], start?: moment.Moment, end?: moment.Moment) {
+        // ... (existing logic for 'append'/'replace' if needed, but 'new-note' handles most)
         if (action.outputMode === 'new-note') {
-            await this.createNewNote(action, text, view.file);
+            await this.createNewNote(action, text, sourceFile, sourceFiles, start, end);
             return;
         }
-
-        const formattedText = `\n\n${text}\n`;
-
-        switch (action.outputMode) {
-            case 'append':
-                const lineCount = editor.lineCount();
-                editor.replaceRange(formattedText, { line: lineCount, ch: 0 });
-                break;
-            case 'replace':
-                editor.setValue(text);
-                break;
-            default:
-                const lineCountDef = editor.lineCount();
-                editor.replaceRange(formattedText, { line: lineCountDef, ch: 0 });
+        
+        // Fallback for current note append/replace
+        const activeView = this.app.workspace.getActiveViewOfType(MarkdownView);
+        if (activeView && sourceFile && activeView.file === sourceFile) {
+             const editor = activeView.editor;
+             const formattedText = `\n\n${text}\n`;
+             
+             switch (action.outputMode) {
+                case 'append':
+                    const lineCount = editor.lineCount();
+                    editor.replaceRange(formattedText, { line: lineCount, ch: 0 });
+                    break;
+                case 'replace':
+                    editor.setValue(text);
+                    break;
+                default:
+                    const lineCountDef = editor.lineCount();
+                    editor.replaceRange(formattedText, { line: lineCountDef, ch: 0 });
+            }
         }
     }
 
-    private async createNewNote(action: AIAction, content: string, sourceFile: TFile | null) {
+    private async createNewNote(action: AIAction, content: string, sourceFile: TFile | null, sourceFiles: TFile[] = [], start?: moment.Moment, end?: moment.Moment) {
         const folder = this.settings.aiActionNoteFolder || '思维涌现';
         
         // Ensure folder exists
@@ -133,34 +185,54 @@ export class ActionManager {
         }
 
         const timestamp = moment().format('YYYYMMDD-HHmmss');
-        const sourceName = sourceFile ? sourceFile.basename : 'Untitled';
-        const filename = `${action.name}-${sourceName}-${timestamp}.md`;
+        let filenameBase = action.name;
+        
+        if (start && end) {
+            filenameBase += `-${start.format('YYYYMMDD')}-${end.format('YYYYMMDD')}`;
+        } else if (sourceFile) {
+            filenameBase += `-${sourceFile.basename}`;
+        }
+        
+        const filename = `${filenameBase}-${timestamp}.md`;
         const path = folder === '/' ? filename : `${folder}/${filename}`;
 
         // Prepare content with frontmatter and backlink
         let finalContent = `---\ntags:\n  - AI涌现/${action.name}\n---\n\n`;
+
         if (sourceFile) {
             finalContent += `> [!info] Source: [[${sourceFile.path}|${sourceFile.basename}]]\n\n`;
+        } else if (sourceFiles.length > 0) {
+            finalContent += `> [!info] Analysis of ${sourceFiles.length} notes from ${start?.format('YYYY-MM-DD')} to ${end?.format('YYYY-MM-DD')}\n\n`;
         }
+        
         finalContent += content;
+        
+        // Append list of source files if multiple
+        if (sourceFiles.length > 0) {
+            finalContent += `\n\n## References\n`;
+            for (const file of sourceFiles) {
+                finalContent += `- [[${file.path}|${file.basename}]]\n`;
+            }
+        }
 
         // Create the new note
         const newFile = await this.app.vault.create(path, finalContent);
         
-        // Insert link to current note
+        // Insert link to current note (only if single source)
         if (sourceFile) {
-            const activeView = this.app.workspace.getActiveViewOfType(MarkdownView);
-            if (activeView && activeView.file === sourceFile) {
-                const editor = activeView.editor;
+            // Try to find the view for the source file
+            const leaves = this.app.workspace.getLeavesOfType('markdown');
+            const sourceLeaf = leaves.find(l => (l.view as MarkdownView).file === sourceFile);
+            
+            if (sourceLeaf) {
+                const editor = (sourceLeaf.view as MarkdownView).editor;
                 const linkText = `\n\n[[${newFile.basename}|${action.name} Output]]\n`;
                 const lineCount = editor.lineCount();
                 editor.replaceRange(linkText, { line: lineCount, ch: 0 });
             }
         }
 
-        // Open the new note in a split to the right? Or just notify?
-        // User didn't specify, but opening it is usually helpful.
-        // Let's open it in a new leaf to the right.
+        // Open the new note in a split to the right
         const leaf = this.app.workspace.getLeaf('split', 'vertical');
         await leaf.openFile(newFile);
     }

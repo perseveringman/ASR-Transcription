@@ -1,9 +1,12 @@
-import { ItemView, WorkspaceLeaf, setIcon, ButtonComponent } from 'obsidian';
+import { ItemView, WorkspaceLeaf, setIcon, ButtonComponent, DropdownComponent, Setting } from 'obsidian';
 import { ActionManager } from '../../managers/action-manager';
+import { SourceConfig, SourceType } from '../../types/action';
 
 export const VIEW_TYPE_AI_SIDEBAR = 'asr-ai-sidebar-view';
 
 export class AISidebarView extends ItemView {
+    private currentSourceType: SourceType = 'current-note';
+
     constructor(leaf: WorkspaceLeaf, private actionManager: ActionManager) {
         super(leaf);
     }
@@ -28,6 +31,19 @@ export class AISidebarView extends ItemView {
         // Header
         const header = container.createEl('div', { cls: 'asr-sidebar-header' });
         header.createEl('h4', { text: 'AI Shortcuts' });
+
+        // Source Selector
+        const sourceDiv = container.createEl('div', { cls: 'asr-source-selector' });
+        new Setting(sourceDiv)
+            .setName('Source')
+            .setDesc('Select content source for actions')
+            .addDropdown(dropdown => dropdown
+                .addOption('current-note', 'Current Note')
+                .addOption('date-range', 'Time Range')
+                .setValue(this.currentSourceType)
+                .onChange((value) => {
+                    this.currentSourceType = value as SourceType;
+                }));
 
         // Categories
         const categories = this.actionManager.getCategories();
@@ -57,7 +73,10 @@ export class AISidebarView extends ItemView {
                 }
 
                 actionBtn.onclick = () => {
-                    this.actionManager.executeAction(action);
+                    const sourceConfig: SourceConfig = {
+                        type: this.currentSourceType
+                    };
+                    this.actionManager.executeAction(action, sourceConfig);
                 };
             }
         }
