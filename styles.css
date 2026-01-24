@@ -37,23 +37,24 @@
 }
 
 .asr-actions-list {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 6px;
 }
 
 .asr-action-button {
-    width: 100%;
+    width: auto;
     justify-content: flex-start;
     text-align: left;
     height: auto;
-    padding: 8px 12px;
+    padding: 6px 8px;
     background-color: var(--interactive-normal);
     border-radius: 4px;
     border: 1px solid transparent;
     cursor: pointer;
     display: flex;
     align-items: center;
+    font-size: 0.85em;
 }
 
 .asr-action-button:hover {
@@ -61,7 +62,7 @@
 }
 
 .asr-action-icon {
-    margin-right: 8px;
+    margin-right: 6px;
     display: flex;
     align-items: center;
     color: var(--text-muted);
