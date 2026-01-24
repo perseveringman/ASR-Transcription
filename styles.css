@@ -1,0 +1,23 @@
+.asr-recording-modal {
+    text-align: center;
+}
+
+.asr-status {
+    margin-bottom: 10px;
+    font-weight: bold;
+}
+
+.asr-timer {
+    font-size: 2em;
+    margin-bottom: 20px;
+}
+
+.asr-timer-warning {
+    color: var(--text-error);
+}
+
+.asr-btn-container {
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+}
