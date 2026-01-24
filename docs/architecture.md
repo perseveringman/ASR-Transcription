@@ -23,6 +23,12 @@ Managers are high-level orchestrators that abstract the complexity of underlying
         *   Provides a unified `complete(messages)` interface.
         *   Manages API keys and connection settings centrally.
 
+*   **`ActionManager`** (New):
+    *   **Role**: Manages the registry of "AI Actions" (shortcuts).
+    *   **Responsibilities**:
+        *   Stores available actions (e.g., "Value Clarification").
+        *   Executes actions by fetching note content, calling `LLMManager`, and handling the output (append/replace).
+
 ### 2. Services
 Services are low-level implementations of specific API providers.
 
@@ -30,12 +36,19 @@ Services are low-level implementations of specific API providers.
 *   `src/services/llm/`: Contains implementations like `OpenAICompatibleLLMService`, `GeminiLLMService`.
 *   `AudioRecorder`: Wraps the browser's MediaRecorder API.
 
-### 3. Features (Workflows)
+### 3. UI Components
+
+*   **`AISidebarView`** (`src/ui/sidebar/`):
+    *   A custom ItemView that lives in the Obsidian Right Sidebar.
+    *   Displays categories of AI Actions.
+    *   Triggers `ActionManager.executeAction()` on click.
+
+### 4. Features (Workflows)
 Features combine Managers and Services to deliver value.
 
 *   **Transcription**: The basic flow of Audio -> Text.
 *   **AI Polishing**: The flow of Audio -> Text -> LLM Polish -> Final Text.
-*   **Future Features**: Summarization, Task Extraction (can be added easily by calling `LLMManager`).
+*   **AI Sidebar Shortcuts**: The flow of Current Note -> LLM Action -> Append Result.
 
 ## Data Flow
 
@@ -58,6 +71,15 @@ graph TD
     RawText --> Inserter[TextInserter]
     PolishedText --> Inserter
     Inserter --> Editor[Obsidian Editor]
+    
+    %% AI Sidebar Flow
+    User --> Sidebar[AISidebarView]
+    Sidebar --> AM[ActionManager]
+    AM --> EditorRead[Read Current Note]
+    EditorRead --> LM
+    LM --> AIResult[AI Analysis]
+    AIResult --> AM
+    AM --> EditorWrite[Append to Note]
 ```
 
 ## Adding a New Provider
@@ -73,3 +95,8 @@ graph TD
 2.  Create a service class in `src/services/transcription/` implementing `TranscriptionService`.
 3.  Register it in `TranscriptionServiceFactory` (or `TranscriptionManager`).
 4.  Add settings UI in `src/ui/settings-tab.ts`.
+
+### Adding a New AI Action
+1.  Edit `src/managers/action-manager.ts`.
+2.  Add a new entry to the `categories` list in `loadDefaultActions()`.
+3.  Define the `systemPrompt`, `name`, and `description`.

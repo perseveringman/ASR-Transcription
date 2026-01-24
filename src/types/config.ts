@@ -35,6 +35,7 @@ export interface PluginSettings {
     timeout: number;
     templatePath: string;
     voiceNoteFolder: string;
+    aiActionNoteFolder: string;
     
     // AI Polishing Settings
     enableAiPolishing: boolean;
@@ -82,6 +83,7 @@ export const DEFAULT_SETTINGS: PluginSettings = {
     timeout: 30000,
     templatePath: '',
     voiceNoteFolder: '/',
+    aiActionNoteFolder: '思维涌现',
 
     // AI Polishing Defaults
     enableAiPolishing: false,

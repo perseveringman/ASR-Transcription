@@ -8,6 +8,8 @@ import { VaultUtils } from './utils/vault-utils';
 import { AudioSelectionModal } from './ui/audio-selection-modal';
 import { TranscriptionManager } from './managers/transcription-manager';
 import { LLMManager } from './managers/llm-manager';
+import { ActionManager } from './managers/action-manager';
+import { AISidebarView, VIEW_TYPE_AI_SIDEBAR } from './ui/sidebar/sidebar-view';
 
 export default class ASRPlugin extends Plugin {
     settings!: PluginSettings;
@@ -15,6 +17,7 @@ export default class ASRPlugin extends Plugin {
     textInserter!: TextInserter;
     transcriptionManager!: TranscriptionManager;
     llmManager!: LLMManager;
+    actionManager!: ActionManager;
 
     async onload() {
         await this.loadSettings();
@@ -23,10 +26,30 @@ export default class ASRPlugin extends Plugin {
         this.textInserter = new TextInserter(this.app, this.settings);
         this.transcriptionManager = new TranscriptionManager(this.settings);
         this.llmManager = new LLMManager(this.settings);
+        this.actionManager = new ActionManager(this.app, this.llmManager, this.settings);
 
         this.addSettingTab(new ASRSettingTab(this.app, this));
 
+        // Register View
+        this.registerView(
+            VIEW_TYPE_AI_SIDEBAR,
+            (leaf) => new AISidebarView(leaf, this.actionManager)
+        );
+
+        // Add Ribbon Icon
+        this.addRibbonIcon('bot', 'Open AI Actions', () => {
+            this.activateView();
+        });
+
         // Register commands
+        this.addCommand({
+            id: 'open-ai-sidebar',
+            name: 'Open AI actions sidebar',
+            callback: () => {
+                this.activateView();
+            }
+        });
+
         this.addCommand({
             id: 'open-asr-modal',
             name: 'Open transcription modal',
@@ -95,6 +118,27 @@ export default class ASRPlugin extends Plugin {
                 }
             })
         );
+    }
+
+    async activateView() {
+        const { workspace } = this.app;
+
+        let leaf = workspace.getLeavesOfType(VIEW_TYPE_AI_SIDEBAR)[0];
+
+        if (!leaf) {
+            const rightLeaf = workspace.getRightLeaf(false);
+            if (rightLeaf) {
+                await rightLeaf.setViewState({
+                    type: VIEW_TYPE_AI_SIDEBAR,
+                    active: true,
+                });
+                leaf = workspace.getLeavesOfType(VIEW_TYPE_AI_SIDEBAR)[0];
+            }
+        }
+
+        if (leaf) {
+            workspace.revealLeaf(leaf);
+        }
     }
 
     private isAudioFile(file: TFile): boolean {
@@ -246,17 +290,24 @@ export default class ASRPlugin extends Plugin {
         }
         
         if (aiText) {
-            result += `\n\n> [!AI] AI Polish\n> ${aiText.trim()}`;
+            result += `
+
+> [!AI] AI Polish
+> ${aiText.trim()}`;
         }
 
         if (audioFile) {
-            result = `![[${audioFile.path}]]\n${result}`;
+            result = `![[${audioFile.path}]]
+${result}`;
         }
 
         if (this.settings.addSeparator) {
-            result = `---\n${result}\n`;
+            result = `---
+${result}
+`;
         } else {
-            result = `${result}\n`;
+            result = `${result}
+`;
         }
 
         return result;
@@ -303,5 +354,10 @@ export default class ASRPlugin extends Plugin {
         this.transcriptionManager.updateSettings(this.settings);
         this.llmManager.updateSettings(this.settings);
         this.textInserter = new TextInserter(this.app, this.settings);
+        
+        // Update action manager if needed
+        if (this.actionManager) {
+             this.actionManager.updateSettings(this.settings);
+        }
     }
 }

@@ -1,23 +1,41 @@
-.asr-recording-modal {
-    text-align: center;
+/* AI Sidebar Styles */
+
+.asr-ai-sidebar-container {
+    padding: 10px;
 }
 
-.asr-status {
-    margin-bottom: 10px;
-    font-weight: bold;
+.asr-sidebar-header {
+    margin-bottom: 20px;
+    border-bottom: 1px solid var(--background-modifier-border);
+    padding-bottom: 10px;
 }
 
-.asr-timer {
-    font-size: 2em;
+.asr-category-section {
     margin-bottom: 20px;
 }
 
-.asr-timer-warning {
-    color: var(--text-error);
+.asr-category-title {
+    font-weight: 600;
+    margin-bottom: 10px;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    font-size: 0.8em;
 }
 
-.asr-btn-container {
+.asr-actions-list {
     display: flex;
-    justify-content: center;
-    gap: 10px;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.asr-action-button {
+    width: 100%;
+    justify-content: flex-start;
+    text-align: left;
+    height: auto;
+    padding: 8px 12px;
+}
+
+.asr-action-button .obsidian-icon {
+    margin-right: 8px;
 }

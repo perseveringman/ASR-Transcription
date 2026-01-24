@@ -33,6 +33,17 @@ export class GeneralSettingsTab {
                 }));
 
         new Setting(this.containerEl)
+            .setName('AI action note folder')
+            .setDesc('Folder where AI generated notes (e.g. from Sidebar) will be created')
+            .addText(text => text
+                .setPlaceholder('思维涌现')
+                .setValue(this.plugin.settings.aiActionNoteFolder)
+                .onChange(async (value) => {
+                    this.plugin.settings.aiActionNoteFolder = value;
+                    await this.plugin.saveSettings();
+                }));
+
+        new Setting(this.containerEl)
             .setName('Template file path')
             .setDesc('Path to the template file for new voice notes (e.g., templates/voice-note.md)')
             .addText(text => text
