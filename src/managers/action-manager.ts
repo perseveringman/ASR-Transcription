@@ -145,6 +145,44 @@ export class ActionManager {
                         ]
                     },
                     {
+                        id: 'recommendation',
+                        name: '推荐内容',
+                        actions: [
+                            {
+                                id: 'book-recommendation',
+                                name: '书单推荐',
+                                description: '基于笔记内容推荐相关的经典书籍',
+                                icon: 'book',
+                                outputMode: 'new-note',
+                                systemPrompt: this.getBookRecommendationPrompt(),
+                            },
+                            {
+                                id: 'poetry-recommendation',
+                                name: '诗歌共鸣',
+                                description: '寻找与笔记意境共鸣的经典诗歌',
+                                icon: 'scroll',
+                                outputMode: 'new-note',
+                                systemPrompt: this.getPoetryRecommendationPrompt(),
+                            },
+                            {
+                                id: 'figure-recommendation',
+                                name: '人物连接',
+                                description: '推荐思想契合或经历相关的历史/现代人物',
+                                icon: 'user-plus',
+                                outputMode: 'new-note',
+                                systemPrompt: this.getFigureRecommendationPrompt(),
+                            },
+                            {
+                                id: 'media-recommendation',
+                                name: '影音推荐',
+                                description: '推荐相关的电影、纪录片或播客',
+                                icon: 'film',
+                                outputMode: 'new-note',
+                                systemPrompt: this.getMediaRecommendationPrompt(),
+                            }
+                        ]
+                    },
+                    {
                         id: 'reflection',
                         name: '复盘',
                         actions: [
@@ -323,6 +361,46 @@ Topic: [3-5个字的简短主题]
 ### 📖 概念释义
 **核心概念**：...
 **深度解析**：...`;
+    }
+
+    private getBookRecommendationPrompt(): string {
+        return `你是一个博学的阅读顾问。请根据用户的笔记内容，推荐 3-5 本深度相关的经典书籍（非畅销书，侧重思想深度和经典性）。
+Topic: [3-5个字的简短主题]
+### 📚 书单推荐
+1. **《[书名]》** [作者]
+   *   **推荐理由**：[结合笔记内容，说明为什么这本书值得读，它如何深化或扩展了笔记中的观点]
+   *   **核心洞察**：[书中的关键思想]
+2. ...`;
+    }
+
+    private getPoetryRecommendationPrompt(): string {
+        return `你是一个文学鉴赏家。请根据用户的笔记意境和情感，寻找 3 首**现存的经典诗歌**（古今中外皆可）来形成共鸣。请引用原诗（或名句），并进行赏析。
+Topic: [3-5个字的简短主题]
+### 📜 诗歌共鸣
+1. **《[诗名]》** [作者]
+   *   **诗句引用**："[名句]"
+   *   **共鸣赏析**：[这首诗如何呼应了笔记中的心境或哲理]
+2. ...`;
+    }
+
+    private getFigureRecommendationPrompt(): string {
+        return `你是一个传记作家。请根据用户的笔记内容，推荐 3 位在思想或经历上与此高度相关的历史人物或现代思想家。
+Topic: [3-5个字的简短主题]
+### 🤝 人物连接
+1. **[人物姓名]** ([身份/时期])
+   *   **连接点**：[为什么推荐这位人物？Ta 的什么经历或思想与笔记内容产生了共鸣？]
+   *   **启发**：[从 Ta 身上可以学到什么]
+2. ...`;
+    }
+
+    private getMediaRecommendationPrompt(): string {
+        return `你是一个文化策展人。请根据用户的笔记内容，推荐 3 部相关的电影、纪录片或播客单集。
+Topic: [3-5个字的简短主题]
+### 🎬 影音推荐
+1. **[作品名称]** ([类型])
+   *   **推荐理由**：[这部作品如何以影像或声音的形式，从侧面印证或拓展了笔记的内容]
+   *   **亮点**：[值得关注的细节]
+2. ...`;
     }
 
     private getDailyReviewPrompt(): string {
