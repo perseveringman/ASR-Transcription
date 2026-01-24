@@ -52,6 +52,23 @@ const context = await esbuild.context({
 					if (fs.existsSync('styles.css')) {
 						fs.copyFileSync('styles.css', 'dist/styles.css');
 					}
+
+					// Copy to vault if configured
+					try {
+						if (fs.existsSync('local-config.json')) {
+							const config = JSON.parse(fs.readFileSync('local-config.json', 'utf8'));
+							if (config.pluginPath && fs.existsSync(config.pluginPath)) {
+								fs.copyFileSync('dist/main.js', path.join(config.pluginPath, 'main.js'));
+								fs.copyFileSync('dist/manifest.json', path.join(config.pluginPath, 'manifest.json'));
+								if (fs.existsSync('dist/styles.css')) {
+									fs.copyFileSync('dist/styles.css', path.join(config.pluginPath, 'styles.css'));
+								}
+								console.log(`[Watch] Copied files to ${config.pluginPath}`);
+							}
+						}
+					} catch (e) {
+						console.error('[Watch] Failed to copy files to vault:', e);
+					}
 				});
 			},
 		},
