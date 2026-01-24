@@ -16,15 +16,15 @@ export class ASRSettingTab extends PluginSettingTab {
         containerEl.empty();
 
         new Setting(containerEl)
-            .setName('Asr voice transcription')
+            .setName('Voice transcription')
             .setHeading();
 
         new Setting(containerEl)
             .setName('Transcription provider')
-            .setDesc('Choose the ai provider for transcription')
+            .setDesc('Choose the API provider for transcription')
             .addDropdown(dropdown => dropdown
-                .addOption(TranscriptionProvider.ZHIPU, 'Zhipu ai (glm-asr-2512)')
-                .addOption(TranscriptionProvider.VOLCENGINE, 'Volcengine doubao (standard edition)')
+                .addOption(TranscriptionProvider.ZHIPU, 'Zhipu AI (glm-asr-2512)')
+                .addOption(TranscriptionProvider.VOLCENGINE, 'VolcEngine doubao')
                 .setValue(this.plugin.settings.transcriptionProvider)
                 .onChange(async (value) => {
                     this.plugin.settings.transcriptionProvider = value as TranscriptionProvider;
@@ -34,10 +34,10 @@ export class ASRSettingTab extends PluginSettingTab {
 
         if (this.plugin.settings.transcriptionProvider === TranscriptionProvider.ZHIPU) {
             new Setting(containerEl)
-                .setName('Zhipu api key')
-                .setDesc('Your zhipu ai api key')
+                .setName('Zhipu API key')
+                .setDesc('Zhipu API key')
                 .addText(text => text
-                    .setPlaceholder('Enter your api key')
+                    .setPlaceholder('Enter your API key')
                     .setValue(this.plugin.settings.zhipuApiKey)
                     .onChange(async (value) => {
                         this.plugin.settings.zhipuApiKey = value.trim();
@@ -48,10 +48,10 @@ export class ASRSettingTab extends PluginSettingTab {
 
         if (this.plugin.settings.transcriptionProvider === TranscriptionProvider.VOLCENGINE) {
             new Setting(containerEl)
-                .setName('Volcengine app id')
-                .setDesc('Your volcengine app id')
+                .setName('VolcEngine app ID')
+                .setDesc('Your VolcEngine app ID')
                 .addText(text => text
-                    .setPlaceholder('Enter your app id')
+                    .setPlaceholder('Enter your app ID')
                     .setValue(this.plugin.settings.volcengineAppId)
                     .onChange(async (value) => {
                         this.plugin.settings.volcengineAppId = value.trim();
@@ -59,8 +59,8 @@ export class ASRSettingTab extends PluginSettingTab {
                     }));
 
             new Setting(containerEl)
-                .setName('Volcengine access token')
-                .setDesc('Your volcengine access token')
+                .setName('VolcEngine access token')
+                .setDesc('Your VolcEngine access token')
                 .addText(text => text
                     .setPlaceholder('Enter your access token')
                     .setValue(this.plugin.settings.volcengineAccessToken)
@@ -153,7 +153,7 @@ export class ASRSettingTab extends PluginSettingTab {
             .setName('Context prompt')
             .setDesc('Provide context to improve transcription accuracy')
             .addTextArea(text => text
-                .setPlaceholder('e.g., This is a technical meeting about...')
+                .setPlaceholder('E.g., this is a technical meeting about...')
                 .setValue(this.plugin.settings.contextPrompt)
                 .onChange(async (value) => {
                     this.plugin.settings.contextPrompt = value;
@@ -187,7 +187,7 @@ export class ASRSettingTab extends PluginSettingTab {
 
         new Setting(containerEl)
             .setName('Retry count')
-            .setDesc('Number of times to retry failed api calls')
+            .setDesc('Number of times to retry failed API calls')
             .addSlider(slider => slider
                 .setLimits(0, 5, 1)
                 .setValue(this.plugin.settings.retryCount)
