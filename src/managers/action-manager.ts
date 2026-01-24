@@ -97,6 +97,14 @@ export class ActionManager {
                                 systemPrompt: this.getPerspectiveCollisionPrompt(),
                             },
                             {
+                                id: 'master-debate',
+                                name: '大师辩论',
+                                description: '模拟多位大师针对内容进行深度辩论',
+                                icon: 'users',
+                                outputMode: 'new-note',
+                                systemPrompt: this.getMasterDebatePrompt(),
+                            },
+                            {
                                 id: 'mindmap-outline',
                                 name: '思维导图大纲',
                                 description: '将内容转化为逻辑清晰的思维导图大纲',
@@ -227,6 +235,26 @@ Topic: [3-5个字的简短主题]
 **原观点审视**：...
 **对立视角**：...
 **综合启发**：...`;
+    }
+
+    private getMasterDebatePrompt(): string {
+        return `你是一个跨时空思想辩论的主持人。请根据用户的笔记内容，邀请 3 位历史上最相关的大师/思想家（例如苏格拉底、孔子、尼采、德鲁克、乔布斯等，具体人选由你根据内容决定），针对笔记中的核心观点进行一场激烈的辩论。
+
+Topic: [3-5个字的简短主题]
+### 🗣️ 大师辩论
+**主持人开场**：[简要介绍背景和辩题]
+**第一轮：观点阐述**
+- 🧙‍♂️ **[大师A]**：...
+- 🧙‍♀️ **[大师B]**：...
+- 🧙 **[大师C]**：...
+
+**第二轮：交锋与反驳**
+- [大师A] 回应 [大师B/C]：...
+- ...
+
+**主持人总结**：
+**综合洞察**：[辩论带来的新视角]
+**最终建议**：[融合各方智慧的建议]`;
     }
 
     private getMindmapOutlinePrompt(): string {
