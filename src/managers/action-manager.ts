@@ -105,6 +105,14 @@ export class ActionManager {
                                 systemPrompt: this.getMasterDebatePrompt(),
                             },
                             {
+                                id: 'poetic-gathering',
+                                name: '诗人雅集',
+                                description: '邀请不同流派诗人重构内容并互评',
+                                icon: 'feather',
+                                outputMode: 'new-note',
+                                systemPrompt: this.getPoeticGatheringPrompt(),
+                            },
+                            {
                                 id: 'mindmap-outline',
                                 name: '思维导图大纲',
                                 description: '将内容转化为逻辑清晰的思维导图大纲',
@@ -255,6 +263,36 @@ Topic: [3-5个字的简短主题]
 **主持人总结**：
 **综合洞察**：[辩论带来的新视角]
 **最终建议**：[融合各方智慧的建议]`;
+    }
+
+    private getPoeticGatheringPrompt(): string {
+        return `你是一位跨越时空的诗社社长。请根据用户的笔记内容，邀请 3-5 位不同流派/时代的大诗人（例如李白、苏轼、泰戈尔、艾米莉·狄金森、波德莱尔、海子等，需风格迥异），请他们各自创作一首诗来诠释这段内容，并进行一轮简短的互评。
+
+Topic: [3-5个字的简短主题]
+### 📜 诗人雅集
+**社长致辞**：[简要介绍本次雅集的主题与受邀诗人]
+
+**第一篇章：诗意重构**
+1. 🎭 **[诗人A]** ([流派/时期])
+   *   **《[诗名]》**
+   *   [诗歌内容]
+   *   **创作心路**：[诗人自述如何理解原笔记]
+
+2. 🎭 **[诗人B]** ([流派/时期])
+   *   **《[诗名]》**
+   *   [诗歌内容]
+   *   **创作心路**：...
+
+3. 🎭 **[诗人C]** ([流派/时期])
+   *   ...
+
+**第二篇章：煮酒论诗 (互评)**
+*   **[诗人A] 评 [诗人B]**：...
+*   **[诗人B] 评 [诗人C]**：...
+*   **[诗人C] 评 [诗人A]**：...
+
+**社长结语**：
+**灵感回响**：[诗意视角带来的独特感悟]`;
     }
 
     private getMindmapOutlinePrompt(): string {
