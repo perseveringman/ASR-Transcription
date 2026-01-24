@@ -1,7 +1,7 @@
 {
   "id": "asr-transcription",
   "name": "ASR-Transcription",
-  "version": "1.0.4",
+  "version": "1.0.5",
   "minAppVersion": "0.15.0",
   "description": "Voice transcription using Volcengine ASR service.",
   "author": "perseveringman",

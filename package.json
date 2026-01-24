@@ -1,6 +1,6 @@
 {
   "name": "ASR-Transcription",
-  "version": "1.0.4",
+  "version": "1.0.5",
   "description": "Voice transcription using Volcengine ASR service",
   "main": "dist/main.js",
   "scripts": {
