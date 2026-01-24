@@ -4,8 +4,8 @@ import { PluginSettings, InsertPosition } from '../types/config';
 export class TextInserter {
     constructor(private app: App, private settings: PluginSettings) {}
 
-    async insert(text: string, targetFile?: TFile) {
-        const formattedText = this.formatText(text, targetFile);
+    async insert(text: string, targetFile?: TFile, aiPolishedText?: string) {
+        const formattedText = this.formatText(text, targetFile, aiPolishedText);
 
         // Only try to insert near audio link if NOT creating a new note
         if (targetFile && this.settings.insertPosition !== InsertPosition.NEW_NOTE) {
@@ -20,11 +20,11 @@ export class TextInserter {
                 const fileBaseName = targetFile.basename;
 
                 // Escape special characters for regex
-                const escapeRegex = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                const escapeRegex = (s: string) => s.replace(/[.*+?^${}()|[\\]/g, '\\$&');
                 const escapedBaseName = escapeRegex(fileBaseName);
 
                 // Look for [[filename]] or ![[filename]]
-                const linkRegex = new RegExp(`!\\[\\[.*${escapedBaseName}.*\\]\\]|\\[\\[.*${escapedBaseName}.*\\]\\]`);
+                const linkRegex = new RegExp(`!\[\[.*${escapedBaseName}.*\]\]|\[\[.*${escapedBaseName}.*\]\]`);
 
                 for (let i = 0; i < lines.length; i++) {
                     if (linkRegex.test(lines[i])) {
@@ -42,23 +42,27 @@ export class TextInserter {
 
         switch (this.settings.insertPosition) {
             case InsertPosition.CURSOR:
-                this.insertAtCursor(formattedText, text, targetFile);
+                this.insertAtCursor(formattedText, text, targetFile, aiPolishedText);
                 break;
             case InsertPosition.DOCUMENT_END:
-                this.insertAtEnd(formattedText, text, targetFile);
+                this.insertAtEnd(formattedText, text, targetFile, aiPolishedText);
                 break;
             case InsertPosition.NEW_NOTE:
-                await this.createNewNote(text, targetFile);
+                await this.createNewNote(text, targetFile, aiPolishedText);
                 break;
         }
     }
 
-    private formatText(text: string, audioFile?: TFile): string {
+    private formatText(text: string, audioFile?: TFile, aiPolishedText?: string): string {
         let result = text.trim();
 
         if (this.settings.addTimestamp) {
             const timestamp = moment().format('YYYY-MM-DD HH:mm:ss');
             result = `[${timestamp}] ${result}`;
+        }
+
+        if (aiPolishedText) {
+            result += `\n\n> [!AI] AI Polish\n> ${aiPolishedText.trim()}`;
         }
 
         if (audioFile) {
@@ -74,30 +78,30 @@ export class TextInserter {
         return result;
     }
 
-    private insertAtCursor(formattedText: string, rawText: string, audioFile?: TFile) {
+    private insertAtCursor(formattedText: string, rawText: string, audioFile?: TFile, aiPolishedText?: string) {
         const activeView = this.app.workspace.getActiveViewOfType(MarkdownView);
         if (activeView) {
             const editor = activeView.editor;
             const cursor = editor.getCursor();
             editor.replaceRange(formattedText, cursor);
         } else {
-            // If no active markdown view, create a new note with raw text
-            void this.createNewNote(rawText, audioFile);
+            // If no active markdown view, create a new note
+            void this.createNewNote(rawText, audioFile, aiPolishedText);
         }
     }
 
-    private insertAtEnd(formattedText: string, rawText: string, audioFile?: TFile) {
+    private insertAtEnd(formattedText: string, rawText: string, audioFile?: TFile, aiPolishedText?: string) {
         const activeView = this.app.workspace.getActiveViewOfType(MarkdownView);
         if (activeView) {
             const editor = activeView.editor;
             const lineCount = editor.lineCount();
             editor.replaceRange(`\n${formattedText}`, { line: lineCount, ch: 0 });
         } else {
-            void this.createNewNote(rawText, audioFile);
+            void this.createNewNote(rawText, audioFile, aiPolishedText);
         }
     }
 
-    private async createNewNote(text: string, audioFile?: TFile) {
+    private async createNewNote(text: string, audioFile?: TFile, aiPolishedText?: string) {
         const folder = this.settings.voiceNoteFolder || '/';
         const timestamp = moment().format('YYYYMMDD-HHmmss');
         const filename = `Transcription-${timestamp}.md`;
@@ -114,61 +118,34 @@ export class TextInserter {
         let content: string;
         let templatePath = this.settings.templatePath?.trim();
         
-        if (this.settings.debugLogging) {
-            console.debug('[ASR Plugin] createNewNote called');
-            console.debug('[ASR Plugin] templatePath setting:', JSON.stringify(templatePath));
-        }
-        
         if (templatePath) {
             // Auto-add .md extension if missing
             if (!templatePath.endsWith('.md')) {
                 templatePath = templatePath + '.md';
-                if (this.settings.debugLogging) {
-                    console.debug('[ASR Plugin] Added .md extension, new path:', templatePath);
-                }
             }
             
-            if (this.settings.debugLogging) {
-                console.debug('[ASR Plugin] Looking for template file at:', templatePath);
-            }
             const templateFile = this.app.vault.getAbstractFileByPath(templatePath);
-            if (this.settings.debugLogging) {
-                console.debug('[ASR Plugin] templateFile found:', templateFile ? 'yes' : 'no');
-            }
             
             if (templateFile instanceof TFile) {
                 const templateContent = await this.app.vault.read(templateFile);
-                if (this.settings.debugLogging) {
-                    console.debug('[ASR Plugin] Template content:', templateContent);
-                }
                 // Use raw text for template, and pass audioFile for audio link variable
-                content = this.applyTemplate(templateContent, text, audioFile);
-                if (this.settings.debugLogging) {
-                    console.debug('[ASR Plugin] Content after applying template:', content);
-                }
+                content = this.applyTemplate(templateContent, text, audioFile, aiPolishedText);
             } else {
                 // Template not found, fallback to formatted text
                 console.warn(`[ASR Plugin] Template file not found at path: ${templatePath}`);
-                content = this.formatText(text, audioFile);
+                content = this.formatText(text, audioFile, aiPolishedText);
             }
         } else {
             // No template configured, use formatted text
-            if (this.settings.debugLogging) {
-                console.debug('[ASR Plugin] No template configured, using formatText');
-            }
-            content = this.formatText(text, audioFile);
+            content = this.formatText(text, audioFile, aiPolishedText);
         }
         
-        if (this.settings.debugLogging) {
-            console.debug('[ASR Plugin] Final content to write:', content);
-        }
-
         const file = await this.app.vault.create(path, content);
         const leaf = this.app.workspace.getLeaf(true);
         await leaf.openFile(file);
     }
 
-    private applyTemplate(template: string, transcription: string, audioFile?: TFile): string {
+    private applyTemplate(template: string, transcription: string, audioFile?: TFile, aiPolishedText?: string): string {
         const now = moment();
         const vars: Record<string, string> = {
             '{{date}}': now.format('YYYY-MM-DD'),
@@ -178,12 +155,14 @@ export class TextInserter {
             '{{content}}': transcription,
             '{{text}}': transcription,
             '{{audio}}': audioFile ? `![[${audioFile.path}]]` : '',
-            '{{audio_link}}': audioFile ? `![[${audioFile.path}]]` : ''
+            '{{audio_link}}': audioFile ? `![[${audioFile.path}]]` : '',
+            '{{aiText}}': aiPolishedText || ''
         };
 
         let result = template;
         for (const [key, value] of Object.entries(vars)) {
-            result = result.replace(new RegExp(key, 'g'), value);
+            // Replace all occurrences
+            result = result.split(key).join(value);
         }
         return result;
     }

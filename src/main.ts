@@ -8,6 +8,7 @@ import { TextInserter } from './services/text-inserter';
 import { VaultUtils } from './utils/vault-utils';
 import { AudioSelectionModal } from './ui/audio-selection-modal';
 import { AudioConverter } from './services/audio-converter';
+import { LLMServiceFactory } from './services/llm/factory';
 
 export default class ASRPlugin extends Plugin {
     settings!: PluginSettings;
@@ -173,6 +174,29 @@ export default class ASRPlugin extends Plugin {
         }
     }
 
+    private async processAiPolishing(text: string): Promise<string> {
+        if (!this.settings.enableAiPolishing) {
+            return '';
+        }
+
+        const notice = new Notice('Polishing text with AI...', 0);
+        try {
+            const llmService = LLMServiceFactory.create(this.settings);
+            const polishedText = await llmService.complete([
+                { role: 'system', content: this.settings.systemPrompt },
+                { role: 'user', content: text }
+            ]);
+            notice.hide();
+            return polishedText;
+        } catch (err) {
+            notice.hide();
+            console.error('AI Polishing failed:', err);
+            const message = err instanceof Error ? err.message : String(err);
+            new Notice(`AI Polishing failed: ${message}`, 5000); // Show for 5s
+            return '';
+        }
+    }
+
     /**
      * Handle transcription of an audio file from context menu
      * Always creates a new note with the transcription
@@ -180,7 +204,8 @@ export default class ASRPlugin extends Plugin {
     async handleAudioFileTranscription(file: TFile) {
         try {
             const fullText = await this.processTranscription(file);
-            await this.createTranscriptionNote(fullText, file);
+            const aiText = await this.processAiPolishing(fullText);
+            await this.createTranscriptionNote(fullText, file, aiText);
             new Notice(`Transcription of ${file.name} complete!`);
         } catch (err: unknown) {
             const message = err instanceof Error ? err.message : String(err);
@@ -217,8 +242,9 @@ export default class ASRPlugin extends Plugin {
 
             // 2. Process transcription
             const fullText = await this.processTranscription(audio);
+            const aiText = await this.processAiPolishing(fullText);
 
-            await this.textInserter.insert(fullText, audioFile || undefined);
+            await this.textInserter.insert(fullText, audioFile || undefined, aiText);
             notice.hide();
             new Notice('Transcription complete!');
         } catch (err: unknown) {
@@ -232,7 +258,8 @@ export default class ASRPlugin extends Plugin {
     async handleFileTranscription(file: TFile) {
         try {
             const fullText = await this.processTranscription(file);
-            await this.textInserter.insert(fullText, file);
+            const aiText = await this.processAiPolishing(fullText);
+            await this.textInserter.insert(fullText, file, aiText);
             new Notice(`Transcription of ${file.name} complete!`);
         } catch (err: unknown) {
             const message = err instanceof Error ? err.message : String(err);
@@ -244,7 +271,7 @@ export default class ASRPlugin extends Plugin {
     /**
      * Create a new note with transcription content
      */
-    private async createTranscriptionNote(text: string, audioFile: TFile) {
+    private async createTranscriptionNote(text: string, audioFile: TFile, aiText?: string) {
         const folder = this.settings.voiceNoteFolder || '/';
         const timestamp = moment().format('YYYYMMDD-HHmmss');
         const filename = `Transcription-${timestamp}.md`;
@@ -271,14 +298,14 @@ export default class ASRPlugin extends Plugin {
             
             if (templateFile instanceof TFile) {
                 const templateContent = await this.app.vault.read(templateFile);
-                content = this.applyTemplate(templateContent, text, audioFile);
+                content = this.applyTemplate(templateContent, text, audioFile, aiText);
             } else {
                 // Template not found, fallback to formatted text
                 console.warn(`[ASR Plugin] Template file not found at path: ${templatePath}`);
-                content = this.formatTranscriptionText(text, audioFile);
+                content = this.formatTranscriptionText(text, audioFile, aiText);
             }
         } else {
-            content = this.formatTranscriptionText(text, audioFile);
+            content = this.formatTranscriptionText(text, audioFile, aiText);
         }
 
         const noteFile = await this.app.vault.create(path, content);
@@ -289,12 +316,16 @@ export default class ASRPlugin extends Plugin {
     /**
      * Format transcription text with audio link and optional timestamp/separator
      */
-    private formatTranscriptionText(text: string, audioFile?: TFile): string {
+    private formatTranscriptionText(text: string, audioFile?: TFile, aiText?: string): string {
         let result = text.trim();
 
         if (this.settings.addTimestamp) {
             const timestamp = moment().format('YYYY-MM-DD HH:mm:ss');
             result = `[${timestamp}] ${result}`;
+        }
+        
+        if (aiText) {
+            result += `\n\n> [!AI] AI Polish\n> ${aiText.trim()}`;
         }
 
         if (audioFile) {
@@ -313,7 +344,7 @@ export default class ASRPlugin extends Plugin {
     /**
      * Apply template variables to template content
      */
-    private applyTemplate(template: string, transcription: string, audioFile?: TFile): string {
+    private applyTemplate(template: string, transcription: string, audioFile?: TFile, aiText?: string): string {
         const now = moment();
         const vars: Record<string, string> = {
             '{{date}}': now.format('YYYY-MM-DD'),
@@ -323,12 +354,14 @@ export default class ASRPlugin extends Plugin {
             '{{content}}': transcription,
             '{{text}}': transcription,
             '{{audio}}': audioFile ? `![[${audioFile.path}]]` : '',
-            '{{audio_link}}': audioFile ? `![[${audioFile.path}]]` : ''
+            '{{audio_link}}': audioFile ? `![[${audioFile.path}]]` : '',
+            '{{aiText}}': aiText || ''
         };
 
         let result = template;
         for (const [key, value] of Object.entries(vars)) {
-            result = result.replace(new RegExp(key, 'g'), value);
+            // Replace all occurrences
+            result = result.split(key).join(value);
         }
         return result;
     }

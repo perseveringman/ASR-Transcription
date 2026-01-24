@@ -1,6 +1,6 @@
 import { App, PluginSettingTab, Setting } from 'obsidian';
 import ASRPlugin from '../main';
-import { InsertPosition, TranscriptionProvider } from '../types/config';
+import { InsertPosition, TranscriptionProvider, LLMProvider } from '../types/config';
 
 export class ASRSettingTab extends PluginSettingTab {
     plugin: ASRPlugin;
@@ -15,6 +15,7 @@ export class ASRSettingTab extends PluginSettingTab {
 
         containerEl.empty();
 
+        // --- Transcription Provider ---
         new Setting(containerEl)
             .setName('Voice transcription')
             .setHeading();
@@ -71,6 +72,74 @@ export class ASRSettingTab extends PluginSettingTab {
                     .inputEl.type = 'password');
         }
 
+        // --- AI Polishing ---
+        new Setting(containerEl)
+            .setName('AI polishing')
+            .setHeading();
+
+        new Setting(containerEl)
+            .setName('Enable AI polishing')
+            .setDesc('Automatically polish transcribed text using an LLM')
+            .addToggle(toggle => toggle
+                .setValue(this.plugin.settings.enableAiPolishing)
+                .onChange(async (value) => {
+                    this.plugin.settings.enableAiPolishing = value;
+                    await this.plugin.saveSettings();
+                    this.display();
+                }));
+
+        if (this.plugin.settings.enableAiPolishing) {
+            new Setting(containerEl)
+                .setName('LLM provider')
+                .setDesc('Choose the LLM provider for polishing')
+                .addDropdown(dropdown => dropdown
+                    .addOption(LLMProvider.OPENROUTER, 'OpenRouter')
+                    .setValue(this.plugin.settings.llmProvider)
+                    .onChange(async (value) => {
+                        this.plugin.settings.llmProvider = value as LLMProvider;
+                        await this.plugin.saveSettings();
+                        this.display();
+                    }));
+
+            if (this.plugin.settings.llmProvider === LLMProvider.OPENROUTER) {
+                new Setting(containerEl)
+                    .setName('OpenRouter API key')
+                    .setDesc('Your OpenRouter API key')
+                    .addText(text => text
+                        .setPlaceholder('sk-or-...')
+                        .setValue(this.plugin.settings.openRouterApiKey)
+                        .onChange(async (value) => {
+                            this.plugin.settings.openRouterApiKey = value.trim();
+                            await this.plugin.saveSettings();
+                        })
+                        .inputEl.type = 'password');
+
+                new Setting(containerEl)
+                    .setName('Model')
+                    .setDesc('OpenRouter model ID (e.g., google/gemini-2.0-flash-exp:free)')
+                    .addText(text => text
+                        .setPlaceholder('google/gemini-2.0-flash-exp:free')
+                        .setValue(this.plugin.settings.openRouterModel)
+                        .onChange(async (value) => {
+                            this.plugin.settings.openRouterModel = value.trim();
+                            await this.plugin.saveSettings();
+                        }));
+            }
+
+            new Setting(containerEl)
+                .setName('System prompt')
+                .setDesc('Instructions for the AI on how to polish the text')
+                .addTextArea(text => text
+                    .setPlaceholder('You are a helpful assistant...')
+                    .setValue(this.plugin.settings.systemPrompt)
+                    .onChange(async (value) => {
+                        this.plugin.settings.systemPrompt = value;
+                        await this.plugin.saveSettings();
+                    })
+                    .inputEl.rows = 5);
+        }
+
+        // --- Insertion ---
         new Setting(containerEl)
             .setName('Insertion')
             .setHeading();
@@ -108,6 +177,7 @@ export class ASRSettingTab extends PluginSettingTab {
                     await this.plugin.saveSettings();
                 }));
 
+        // --- Storage ---
         new Setting(containerEl)
             .setName('Storage')
             .setHeading();
@@ -145,6 +215,7 @@ export class ASRSettingTab extends PluginSettingTab {
                     await this.plugin.saveSettings();
                 }));
 
+        // --- Transcription ---
         new Setting(containerEl)
             .setName('Transcription')
             .setHeading();
@@ -171,6 +242,7 @@ export class ASRSettingTab extends PluginSettingTab {
                     await this.plugin.saveSettings();
                 }));
 
+        // --- Advanced ---
         new Setting(containerEl)
             .setName('Advanced')
             .setHeading();
