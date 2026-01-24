@@ -609,7 +609,20 @@ Topic: 3-5个字的简短主题（纯文本，不要加括号或任何格式）
     }
 
     private async executeSelectionAction(action: AIAction) {
-        const activeView = this.app.workspace.getActiveViewOfType(MarkdownView);
+        let activeView = this.app.workspace.getActiveViewOfType(MarkdownView);
+        
+        // If focus is in sidebar, try to find the view for the active file
+        if (!activeView) {
+            const activeFile = this.app.workspace.getActiveFile();
+            if (activeFile && activeFile.extension === 'md') {
+                const leaves = this.app.workspace.getLeavesOfType('markdown');
+                const matchingLeaf = leaves.find(l => (l.view as MarkdownView).file === activeFile);
+                if (matchingLeaf) {
+                    activeView = matchingLeaf.view as MarkdownView;
+                }
+            }
+        }
+
         if (!activeView) {
             new Notice('No active Markdown view found.');
             return;
