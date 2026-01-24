@@ -47,6 +47,7 @@ export class ActionManager {
 4. 如果可能，提供一个行动建议，帮助用户回归核心。
 
 输出格式：
+Topic: [3-5个字的简短主题]
 ### 💎 价值澄清
 **核心关注**：[总结]
 **潜在洞察**：[深层分析]
@@ -184,6 +185,15 @@ export class ActionManager {
             }
         }
 
+        // Parse Topic
+        let topic = '';
+        let cleanContent = content.trim();
+        const topicMatch = cleanContent.match(/^Topic:\s*(.*)/i);
+        if (topicMatch) {
+            topic = topicMatch[1].trim();
+            cleanContent = cleanContent.replace(/^Topic:\s*.*\n?/i, '').trim();
+        }
+
         const timestamp = moment().format('YYYYMMDD-HHmmss');
         let filenameBase = action.name;
         
@@ -197,7 +207,11 @@ export class ActionManager {
         const path = folder === '/' ? filename : `${folder}/${filename}`;
 
         // Prepare content with frontmatter and backlink
-        let finalContent = `---\ntags:\n  - AI涌现/${action.name}\n---\n\n`;
+        let finalContent = `---\ntags:\n  - AI涌现/${action.name}\n`;
+        if (topic) {
+            finalContent += `topic: ${topic}\n`;
+        }
+        finalContent += `---\n\n`;
 
         if (sourceFile) {
             finalContent += `> [!info] Source: [[${sourceFile.path}|${sourceFile.basename}]]\n\n`;
@@ -205,7 +219,7 @@ export class ActionManager {
             finalContent += `> [!info] Analysis of ${sourceFiles.length} notes from ${start?.format('YYYY-MM-DD')} to ${end?.format('YYYY-MM-DD')}\n\n`;
         }
         
-        finalContent += content;
+        finalContent += cleanContent;
         
         // Append list of source files if multiple
         if (sourceFiles.length > 0) {
