@@ -17,7 +17,6 @@ export class TextInserter {
                 
                 // Try to find the line with the file reference
                 let targetLine = -1;
-                const fileName = targetFile.name;
                 const fileBaseName = targetFile.basename;
 
                 // Escape special characters for regex

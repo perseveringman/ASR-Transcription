@@ -21,7 +21,7 @@ export class RecordingModal extends Modal {
         contentEl.empty();
         contentEl.addClass('asr-recording-modal');
 
-        contentEl.createEl('h2', { text: 'Voice Transcription' });
+        contentEl.createEl('h2', { text: 'Voice transcription' });
 
         this.statusEl = contentEl.createEl('div', { text: 'Ready to record', cls: 'asr-status' });
         this.timerEl = contentEl.createEl('div', { text: '00:00', cls: 'asr-timer' });
@@ -29,20 +29,20 @@ export class RecordingModal extends Modal {
         const btnContainer = contentEl.createEl('div', { cls: 'asr-btn-container' });
 
         this.startStopBtn = btnContainer.createEl('button', {
-            text: 'Start Recording',
+            text: 'Start recording',
             cls: 'mod-cta'
         });
 
         this.startStopBtn.onclick = () => {
             if (this.recorder.getState() === RecordingState.IDLE) {
-                this.startRecording();
+                void this.startRecording();
             } else if (this.recorder.getState() === RecordingState.RECORDING) {
-                this.stopRecording();
+                void this.stopRecording();
             }
         };
 
         this.uploadBtn = btnContainer.createEl('button', {
-            text: 'Upload File',
+            text: 'Upload file',
         });
 
         this.uploadBtn.onclick = () => {
@@ -52,9 +52,11 @@ export class RecordingModal extends Modal {
         // Define handlers
         this.handlers['statechange'] = (state: unknown) => this.updateUI(state as RecordingState);
         this.handlers['durationchange'] = (seconds: unknown) => this.updateTimer(seconds as number);
-        this.handlers['recorded'] = async (blob: unknown) => {
-            await this.onRecordingComplete(blob as Blob);
-            this.close();
+        this.handlers['recorded'] = (blob: unknown) => {
+            void (async () => {
+                await this.onRecordingComplete(blob as Blob);
+                this.close();
+            })();
         };
         this.handlers['error'] = (err: unknown) => {
             const message = err instanceof Error ? err.message : String(err);
@@ -107,7 +109,7 @@ export class RecordingModal extends Modal {
             const file = target.files?.[0];
             if (file) {
                 if (file.size > 25 * 1024 * 1024) {
-                    new Notice('File too large (max 25MB)');
+                    new Notice('File too large (max 25mb)');
                     return;
                 }
                 await this.onRecordingComplete(file);
@@ -123,13 +125,13 @@ export class RecordingModal extends Modal {
         switch (state) {
             case RecordingState.IDLE:
                 this.statusEl.setText('Ready to record');
-                this.startStopBtn.setText('Start Recording');
+                this.startStopBtn.setText('Start recording');
                 this.startStopBtn.disabled = false;
                 this.uploadBtn.disabled = false;
                 break;
             case RecordingState.RECORDING:
                 this.statusEl.setText('Recording...');
-                this.startStopBtn.setText('Stop Recording');
+                this.startStopBtn.setText('Stop recording');
                 this.startStopBtn.disabled = false;
                 this.uploadBtn.disabled = true;
                 break;

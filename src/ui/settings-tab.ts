@@ -16,15 +16,15 @@ export class ASRSettingTab extends PluginSettingTab {
         containerEl.empty();
 
         new Setting(containerEl)
-            .setName('ASR Voice Transcription Settings')
+            .setName('ASR voice transcription')
             .setHeading();
 
         new Setting(containerEl)
             .setName('Transcription provider')
-            .setDesc('Choose the AI provider for transcription')
+            .setDesc('Choose the ai provider for transcription')
             .addDropdown(dropdown => dropdown
-                .addOption(TranscriptionProvider.ZHIPU, 'Zhipu AI (GLM-ASR-2512)')
-.addOption(TranscriptionProvider.VOLCENGINE, 'Volcengine Doubao (Standard Edition)')
+                .addOption(TranscriptionProvider.ZHIPU, 'Zhipu ai (glm-asr-2512)')
+                .addOption(TranscriptionProvider.VOLCENGINE, 'Volcengine doubao (standard edition)')
                 .setValue(this.plugin.settings.transcriptionProvider)
                 .onChange(async (value) => {
                     this.plugin.settings.transcriptionProvider = value as TranscriptionProvider;
@@ -34,10 +34,10 @@ export class ASRSettingTab extends PluginSettingTab {
 
         if (this.plugin.settings.transcriptionProvider === TranscriptionProvider.ZHIPU) {
             new Setting(containerEl)
-                .setName('Zhipu API key')
-                .setDesc('Your Zhipu AI API Key')
+                .setName('Zhipu api key')
+                .setDesc('Your zhipu ai api key')
                 .addText(text => text
-                    .setPlaceholder('Enter your API Key')
+                    .setPlaceholder('Enter your api key')
                     .setValue(this.plugin.settings.zhipuApiKey)
                     .onChange(async (value) => {
                         this.plugin.settings.zhipuApiKey = value.trim();
@@ -48,10 +48,10 @@ export class ASRSettingTab extends PluginSettingTab {
 
         if (this.plugin.settings.transcriptionProvider === TranscriptionProvider.VOLCENGINE) {
             new Setting(containerEl)
-                .setName('Volcengine App ID')
-                .setDesc('Your Volcengine App ID')
+                .setName('Volcengine app id')
+                .setDesc('Your volcengine app id')
                 .addText(text => text
-                    .setPlaceholder('Enter your App ID')
+                    .setPlaceholder('Enter your app id')
                     .setValue(this.plugin.settings.volcengineAppId)
                     .onChange(async (value) => {
                         this.plugin.settings.volcengineAppId = value.trim();
@@ -60,9 +60,9 @@ export class ASRSettingTab extends PluginSettingTab {
 
             new Setting(containerEl)
                 .setName('Volcengine access token')
-                .setDesc('Your Volcengine Access Token')
+                .setDesc('Your volcengine access token')
                 .addText(text => text
-                    .setPlaceholder('Enter your Access Token')
+                    .setPlaceholder('Enter your access token')
                     .setValue(this.plugin.settings.volcengineAccessToken)
                     .onChange(async (value) => {
                         this.plugin.settings.volcengineAccessToken = value.trim();
@@ -72,7 +72,7 @@ export class ASRSettingTab extends PluginSettingTab {
         }
 
         new Setting(containerEl)
-            .setName('Insertion settings')
+            .setName('Insertion')
             .setHeading();
 
         new Setting(containerEl)
@@ -109,7 +109,7 @@ export class ASRSettingTab extends PluginSettingTab {
                 }));
 
         new Setting(containerEl)
-            .setName('Storage settings')
+            .setName('Storage')
             .setHeading();
 
         new Setting(containerEl)
@@ -136,7 +136,7 @@ export class ASRSettingTab extends PluginSettingTab {
 
         new Setting(containerEl)
             .setName('Template file path')
-            .setDesc('Path to the template file for new voice notes (e.g. templates/voice-note.md)')
+            .setDesc('Path to the template file for new voice notes (e.g., templates/voice-note.md)')
             .addText(text => text
                 .setPlaceholder('templates/voice-note.md')
                 .setValue(this.plugin.settings.templatePath)
@@ -153,7 +153,7 @@ export class ASRSettingTab extends PluginSettingTab {
             .setName('Context prompt')
             .setDesc('Provide context to improve transcription accuracy')
             .addTextArea(text => text
-                .setPlaceholder('e.g. This is a technical meeting about...')
+                .setPlaceholder('e.g., This is a technical meeting about...')
                 .setValue(this.plugin.settings.contextPrompt)
                 .onChange(async (value) => {
                     this.plugin.settings.contextPrompt = value;
@@ -162,7 +162,7 @@ export class ASRSettingTab extends PluginSettingTab {
 
         new Setting(containerEl)
             .setName('Hotwords')
-            .setDesc('Comma-separated list of words to prioritize (e.g. specialized terms)')
+            .setDesc('Comma-separated list of words to prioritize (e.g., specialized terms)')
             .addText(text => text
                 .setPlaceholder('word1, word2')
                 .setValue(this.plugin.settings.hotwords.join(', '))
@@ -172,7 +172,7 @@ export class ASRSettingTab extends PluginSettingTab {
                 }));
 
         new Setting(containerEl)
-            .setName('Advanced settings')
+            .setName('Advanced')
             .setHeading();
 
         new Setting(containerEl)
@@ -187,7 +187,7 @@ export class ASRSettingTab extends PluginSettingTab {
 
         new Setting(containerEl)
             .setName('Retry count')
-            .setDesc('Number of times to retry failed API calls')
+            .setDesc('Number of times to retry failed api calls')
             .addSlider(slider => slider
                 .setLimits(0, 5, 1)
                 .setValue(this.plugin.settings.retryCount)
