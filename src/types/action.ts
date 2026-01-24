@@ -8,7 +8,7 @@ export interface AIAction {
     outputMode: 'append' | 'replace' | 'new-note' | 'modal';
 }
 
-export type SourceType = 'current-note' | 'date-range';
+export type SourceType = 'current-note' | 'date-range' | 'current-folder' | 'tag' | 'selection';
 
 export interface SourceConfig {
     type: SourceType;

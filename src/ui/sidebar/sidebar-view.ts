@@ -39,6 +39,9 @@ export class AISidebarView extends ItemView {
             .setDesc('Select content source for actions')
             .addDropdown(dropdown => dropdown
                 .addOption('current-note', 'Current Note')
+                .addOption('selection', 'Selection')
+                .addOption('current-folder', 'Current Folder')
+                .addOption('tag', 'Tag (All Notes)')
                 .addOption('date-range', 'Time Range')
                 .setValue(this.currentSourceType)
                 .onChange((value) => {

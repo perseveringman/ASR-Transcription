@@ -1,8 +1,9 @@
-import { App, MarkdownView, Notice, TFile, moment } from 'obsidian';
+import { App, MarkdownView, Notice, TFile, moment, TFolder } from 'obsidian';
 import { LLMManager } from './llm-manager';
 import { RootCategory, AIAction, SourceConfig } from '../types/action';
 import { PluginSettings } from '../types/config';
 import { TimeRangeModal } from '../ui/modals/time-range-modal';
+import { TagSelectionModal } from '../ui/modals/tag-selection-modal';
 
 export class ActionManager {
     private categories: RootCategory[] = [];
@@ -550,13 +551,31 @@ Topic: 3-5个字的简短主题（纯文本，不要加括号或任何格式）
     public async executeAction(action: AIAction, source: SourceConfig) {
         await this.recordActionUsage(action.id);
 
-        if (source.type === 'date-range') {
-            new TimeRangeModal(this.app, (start, end) => {
-                this.executeDateRangeAction(action, start, end);
-            }).open();
-            return;
+        switch (source.type) {
+            case 'date-range':
+                new TimeRangeModal(this.app, (start, end) => {
+                    this.executeDateRangeAction(action, start, end);
+                }).open();
+                break;
+            case 'tag':
+                new TagSelectionModal(this.app, (tag) => {
+                    this.executeTagAction(action, tag);
+                }).open();
+                break;
+            case 'current-folder':
+                this.executeFolderAction(action);
+                break;
+            case 'selection':
+                this.executeSelectionAction(action);
+                break;
+            case 'current-note':
+            default:
+                this.executeCurrentNoteAction(action);
+                break;
         }
+    }
 
+    private executeCurrentNoteAction(action: AIAction) {
         // Default: current-note
         let activeView = this.app.workspace.getActiveViewOfType(MarkdownView);
         
@@ -589,6 +608,108 @@ Topic: 3-5个字的简短主题（纯文本，不要加括号或任何格式）
         this.runLLM(action, content, activeView.file);
     }
 
+    private async executeSelectionAction(action: AIAction) {
+        const activeView = this.app.workspace.getActiveViewOfType(MarkdownView);
+        if (!activeView) {
+            new Notice('No active Markdown view found.');
+            return;
+        }
+
+        const editor = activeView.editor;
+        const selection = editor.getSelection();
+
+        if (!selection.trim()) {
+            new Notice('No text selected.');
+            return;
+        }
+
+        // Treat selection like a current note action but with selected text
+        this.runLLM(action, selection, activeView.file, [], undefined, undefined, "Selected Text");
+    }
+
+    private async executeFolderAction(action: AIAction) {
+        const activeFile = this.app.workspace.getActiveFile();
+        if (!activeFile) {
+            new Notice('No active file to determine folder.');
+            return;
+        }
+
+        const parent = activeFile.parent;
+        if (!parent) {
+             new Notice('Cannot determine parent folder.');
+             return;
+        }
+
+        const files = this.fetchFilesByFolder(parent);
+        if (files.length === 0) {
+            new Notice('No markdown files found in current folder.');
+            return;
+        }
+
+        new Notice(`Processing ${files.length} notes in folder ${parent.name}...`);
+        
+        const combinedContent = await this.combineFilesContent(files, `Folder: ${parent.path}`);
+        this.runLLM(action, combinedContent, null, files, undefined, undefined, `Folder: ${parent.name}`);
+    }
+
+    private async executeTagAction(action: AIAction, tag: string) {
+        const files = this.fetchFilesByTag(tag);
+         if (files.length === 0) {
+            new Notice(`No notes found with tag ${tag}.`);
+            return;
+        }
+
+        new Notice(`Processing ${files.length} notes with tag ${tag}...`);
+
+        const combinedContent = await this.combineFilesContent(files, `Tag: ${tag}`);
+        this.runLLM(action, combinedContent, null, files, undefined, undefined, `Tag: ${tag}`);
+    }
+
+    private fetchFilesByFolder(folder: TFolder): TFile[] {
+        const files: TFile[] = [];
+        for (const child of folder.children) {
+            if (child instanceof TFile && child.extension === 'md') {
+                files.push(child);
+            }
+        }
+        return files;
+    }
+
+    private fetchFilesByTag(tag: string): TFile[] {
+        const files = this.app.vault.getMarkdownFiles();
+        return files.filter(file => {
+            const cache = this.app.metadataCache.getFileCache(file);
+            if (!cache) return false;
+            
+            // Check frontmatter tags
+            const frontmatterTags = cache.frontmatter?.tags;
+            if (frontmatterTags) {
+                if (Array.isArray(frontmatterTags)) {
+                    if (frontmatterTags.includes(tag) || frontmatterTags.includes(tag.replace('#', ''))) return true;
+                } else if (typeof frontmatterTags === 'string') {
+                    if (frontmatterTags === tag || frontmatterTags === tag.replace('#', '')) return true;
+                }
+            }
+
+            // Check inline tags
+            if (cache.tags) {
+                if (cache.tags.some(t => t.tag === tag)) return true;
+            }
+
+            return false;
+        });
+    }
+
+    private async combineFilesContent(files: TFile[], headerInfo: string): Promise<string> {
+        let combinedContent = `Context: ${headerInfo}\n\n`;
+        for (const file of files) {
+            const content = await this.app.vault.read(file);
+            combinedContent += `\n\n--- Note: [[${file.basename}]] ---\n${content}`;
+        }
+        combinedContent += `\n\nIMPORTANT: You must start your response with "Topic: 3-5个字的简短主题（纯文本，不要加括号或任何格式）" on the very first line.`;
+        return combinedContent;
+    }
+
     private async executeDateRangeAction(action: AIAction, start: moment.Moment, end: moment.Moment) {
         const files = this.fetchFilesByDateRange(start, end);
         if (files.length === 0) {
@@ -598,13 +719,7 @@ Topic: 3-5个字的简短主题（纯文本，不要加括号或任何格式）
 
         new Notice(`Processing ${files.length} notes...`);
 
-        let combinedContent = `Analysis Period: ${start.format('YYYY-MM-DD')} to ${end.format('YYYY-MM-DD')}\n\n`;
-        for (const file of files) {
-            const content = await this.app.vault.read(file);
-            combinedContent += `\n\n--- Note: [[${file.basename}]] ---\n${content}`;
-        }
-
-        combinedContent += `\n\nIMPORTANT: You must start your response with "Topic: 3-5个字的简短主题（纯文本，不要加括号或任何格式）" on the very first line.`;
+        const combinedContent = await this.combineFilesContent(files, `Analysis Period: ${start.format('YYYY-MM-DD')} to ${end.format('YYYY-MM-DD')}`);
 
         this.runLLM(action, combinedContent, null, files, start, end);
     }
@@ -621,7 +736,7 @@ Topic: 3-5个字的简短主题（纯文本，不要加括号或任何格式）
         });
     }
 
-    private async runLLM(action: AIAction, content: string, sourceFile: TFile | null, sourceFiles: TFile[] = [], start?: moment.Moment, end?: moment.Moment) {
+    private async runLLM(action: AIAction, content: string, sourceFile: TFile | null, sourceFiles: TFile[] = [], start?: moment.Moment, end?: moment.Moment, contextInfo?: string) {
         new Notice(`Running AI Action: ${action.name}...`);
 
         try {
@@ -630,7 +745,7 @@ Topic: 3-5个字的简短主题（纯文本，不要加括号或任何格式）
                 { role: 'user', content: content }
             ]);
 
-            await this.handleOutput(action, result, sourceFile, sourceFiles, start, end);
+            await this.handleOutput(action, result, sourceFile, sourceFiles, start, end, contextInfo);
             new Notice('AI Action completed!');
         } catch (error) {
             console.error('AI Action failed:', error);
@@ -639,10 +754,10 @@ Topic: 3-5个字的简短主题（纯文本，不要加括号或任何格式）
         }
     }
 
-    private async handleOutput(action: AIAction, text: string, sourceFile: TFile | null, sourceFiles: TFile[] = [], start?: moment.Moment, end?: moment.Moment) {
+    private async handleOutput(action: AIAction, text: string, sourceFile: TFile | null, sourceFiles: TFile[] = [], start?: moment.Moment, end?: moment.Moment, contextInfo?: string) {
         // ... (existing logic for 'append'/'replace' if needed, but 'new-note' handles most)
         if (action.outputMode === 'new-note') {
-            await this.createNewNote(action, text, sourceFile, sourceFiles, start, end);
+            await this.createNewNote(action, text, sourceFile, sourceFiles, start, end, contextInfo);
             return;
         }
         
@@ -669,7 +784,7 @@ Topic: 3-5个字的简短主题（纯文本，不要加括号或任何格式）
         }
     }
 
-    private async createNewNote(action: AIAction, content: string, sourceFile: TFile | null, sourceFiles: TFile[] = [], start?: moment.Moment, end?: moment.Moment) {
+    private async createNewNote(action: AIAction, content: string, sourceFile: TFile | null, sourceFiles: TFile[] = [], start?: moment.Moment, end?: moment.Moment, contextInfo?: string) {
         const folder = this.settings.aiActionNoteFolder || '思维涌现';
         
         // Ensure folder exists
@@ -705,6 +820,10 @@ Topic: 3-5个字的简短主题（纯文本，不要加括号或任何格式）
         
         if (start && end) {
             filenameBase += `-${start.format('YYYYMMDD')}-${end.format('YYYYMMDD')}`;
+        } else if (contextInfo) {
+             // Sanitize context info for filename
+             const sanitizedContext = contextInfo.replace(/[^a-zA-Z0-9\u4e00-\u9fa5]/g, '-').substring(0, 20);
+             filenameBase += `-${sanitizedContext}`;
         } else if (sourceFile) {
             filenameBase += `-${sourceFile.basename}`;
         }
@@ -722,8 +841,15 @@ Topic: 3-5个字的简短主题（纯文本，不要加括号或任何格式）
 
         if (sourceFile) {
             finalContent += `> [!info] Source: [[${sourceFile.path}|${sourceFile.basename}]]\n\n`;
+            if (contextInfo === "Selected Text") {
+                finalContent += `> [!info] Scope: Selected Text\n\n`;
+            }
         } else if (sourceFiles.length > 0) {
-            finalContent += `> [!info] Analysis of ${sourceFiles.length} notes from ${start?.format('YYYY-MM-DD')} to ${end?.format('YYYY-MM-DD')}\n\n`;
+            if (start && end) {
+                finalContent += `> [!info] Analysis of ${sourceFiles.length} notes from ${start.format('YYYY-MM-DD')} to ${end.format('YYYY-MM-DD')}\n\n`;
+            } else if (contextInfo) {
+                finalContent += `> [!info] Analysis of ${sourceFiles.length} notes. Source: ${contextInfo}\n\n`;
+            }
         }
         
         finalContent += cleanContent;
