@@ -8,13 +8,52 @@ export class ActionManager {
     private categories: RootCategory[] = [];
     private settings: PluginSettings;
 
-    constructor(private app: App, private llmManager: LLMManager, settings: PluginSettings) {
+    constructor(
+        private app: App,
+        private llmManager: LLMManager,
+        settings: PluginSettings,
+        private saveSettings?: () => Promise<void>
+    ) {
         this.settings = settings;
         this.loadDefaultActions();
     }
 
     public updateSettings(settings: PluginSettings) {
         this.settings = settings;
+    }
+
+    public getMostFrequentActions(limit: number = 4): AIAction[] {
+        const counts = this.settings.actionUsageCounts || {};
+        const allActions: AIAction[] = [];
+        
+        // Flatten all actions
+        for (const root of this.categories) {
+            for (const sub of root.subCategories) {
+                allActions.push(...sub.actions);
+            }
+        }
+
+        // Sort by usage count (descending)
+        return allActions
+            .filter(action => (counts[action.id] || 0) > 0)
+            .sort((a, b) => {
+                const countA = counts[a.id] || 0;
+                const countB = counts[b.id] || 0;
+                return countB - countA;
+            })
+            .slice(0, limit);
+    }
+
+    private async recordActionUsage(actionId: string) {
+        if (!this.settings.actionUsageCounts) {
+            this.settings.actionUsageCounts = {};
+        }
+        
+        this.settings.actionUsageCounts[actionId] = (this.settings.actionUsageCounts[actionId] || 0) + 1;
+        
+        if (this.saveSettings) {
+            await this.saveSettings();
+        }
     }
 
     // ... loadDefaultActions ...
@@ -509,6 +548,8 @@ Topic: 3-5个字的简短主题（纯文本，不要加括号或任何格式）
     }
 
     public async executeAction(action: AIAction, source: SourceConfig) {
+        await this.recordActionUsage(action.id);
+
         if (source.type === 'date-range') {
             new TimeRangeModal(this.app, (start, end) => {
                 this.executeDateRangeAction(action, start, end);

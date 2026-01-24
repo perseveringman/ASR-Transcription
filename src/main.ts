@@ -26,7 +26,7 @@ export default class ASRPlugin extends Plugin {
         this.textInserter = new TextInserter(this.app, this.settings);
         this.transcriptionManager = new TranscriptionManager(this.settings);
         this.llmManager = new LLMManager(this.settings);
-        this.actionManager = new ActionManager(this.app, this.llmManager, this.settings);
+        this.actionManager = new ActionManager(this.app, this.llmManager, this.settings, this.saveSettings.bind(this));
 
         this.addSettingTab(new ASRSettingTab(this.app, this));
 

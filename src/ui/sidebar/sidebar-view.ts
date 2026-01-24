@@ -45,6 +45,39 @@ export class AISidebarView extends ItemView {
                     this.currentSourceType = value as SourceType;
                 }));
 
+        // Commonly Used Actions
+        const frequentActions = this.actionManager.getMostFrequentActions(4);
+        if (frequentActions.length > 0) {
+            const freqDiv = container.createEl('div', { cls: 'asr-root-section asr-frequent-section' });
+            
+            const freqTitle = freqDiv.createEl('div', { cls: 'asr-root-title' });
+            freqTitle.createEl('span', { text: '🔥 常用 (Commonly Used)' });
+
+            const actionsDiv = freqDiv.createEl('div', { cls: 'asr-actions-list' });
+                
+            for (const action of frequentActions) {
+                const actionBtn = actionsDiv.createEl('button', { cls: 'asr-action-button' });
+                
+                if (action.icon) {
+                    const iconSpan = actionBtn.createSpan({ cls: 'asr-action-icon' });
+                    setIcon(iconSpan, action.icon);
+                }
+                
+                actionBtn.createSpan({ text: action.name, cls: 'asr-action-name' });
+
+                if (action.description) {
+                    actionBtn.setAttribute('aria-label', action.description);
+                }
+
+                actionBtn.onclick = () => {
+                    const sourceConfig: SourceConfig = {
+                        type: this.currentSourceType
+                    };
+                    this.actionManager.executeAction(action, sourceConfig);
+                };
+            }
+        }
+
         // Categories
         const rootCategories = this.actionManager.getCategories();
         

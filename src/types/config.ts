@@ -65,6 +65,8 @@ export interface PluginSettings {
 
     deepseekApiKey: string;
     deepseekModel: string;
+
+    actionUsageCounts: Record<string, number>;
 }
 
 export const DEFAULT_SETTINGS: PluginSettings = {
@@ -111,5 +113,7 @@ export const DEFAULT_SETTINGS: PluginSettings = {
     minimaxModel: 'abab6.5s-chat',
 
     deepseekApiKey: '',
-    deepseekModel: 'deepseek-chat'
+    deepseekModel: 'deepseek-chat',
+
+    actionUsageCounts: {}
 };
