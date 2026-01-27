@@ -9,6 +9,8 @@ import { AudioSelectionModal } from './ui/audio-selection-modal';
 import { TranscriptionManager } from './managers/transcription-manager';
 import { LLMManager } from './managers/llm-manager';
 import { ActionManager } from './managers/action-manager';
+import { BatchManager } from './managers/batch-manager';
+import { TranscriptionNoteService } from './services/transcription-note-service';
 import { AISidebarView, VIEW_TYPE_AI_SIDEBAR } from './ui/sidebar/sidebar-view';
 
 export default class ASRPlugin extends Plugin {
@@ -18,6 +20,8 @@ export default class ASRPlugin extends Plugin {
     transcriptionManager!: TranscriptionManager;
     llmManager!: LLMManager;
     actionManager!: ActionManager;
+    batchManager!: BatchManager;
+    noteService!: TranscriptionNoteService;
 
     async onload() {
         await this.loadSettings();
@@ -26,7 +30,9 @@ export default class ASRPlugin extends Plugin {
         this.textInserter = new TextInserter(this.app, this.settings);
         this.transcriptionManager = new TranscriptionManager(this.settings);
         this.llmManager = new LLMManager(this.settings);
+        this.noteService = new TranscriptionNoteService(this.app, this.settings);
         this.actionManager = new ActionManager(this.app, this.llmManager, this.settings, this.saveSettings.bind(this));
+        this.batchManager = new BatchManager(this.app, this.settings, this.transcriptionManager, this.llmManager, this.noteService);
 
         this.addSettingTab(new ASRSettingTab(this.app, this));
 
@@ -103,6 +109,14 @@ export default class ASRPlugin extends Plugin {
             }
         });
 
+        this.addCommand({
+            id: 'batch-process-todays-audio',
+            name: 'Batch process today\'s audio notes',
+            callback: () => {
+                void this.batchManager.processTodaysAudioFiles();
+            }
+        });
+
         // Register file menu event for right-click transcription on audio files
         this.registerEvent(
             this.app.workspace.on('file-menu', (menu: Menu, file: TAbstractFile) => {
@@ -154,7 +168,12 @@ export default class ASRPlugin extends Plugin {
         try {
             const fullText = await this.transcriptionManager.transcribe(file, this.app);
             const aiText = await this.llmManager.polish(fullText);
-            await this.createTranscriptionNote(fullText, file, aiText);
+            const noteFile = await this.noteService.createTranscriptionNote(fullText, file, aiText);
+            
+            // Open the new note
+            const leaf = this.app.workspace.getLeaf(true);
+            await leaf.openFile(noteFile);
+            
             new Notice(`Transcription of ${file.name} complete!`);
         } catch (err: unknown) {
             const message = err instanceof Error ? err.message : String(err);
@@ -233,111 +252,6 @@ export default class ASRPlugin extends Plugin {
         }
     }
 
-    /**
-     * Create a new note with transcription content
-     */
-    private async createTranscriptionNote(text: string, audioFile: TFile, aiText?: string) {
-        const folder = this.settings.voiceNoteFolder || '/';
-        const timestamp = moment().format('YYYYMMDD-HHmmss');
-        const filename = `Transcription-${timestamp}.md`;
-        const path = folder === '/' ? filename : `${folder}/${filename}`;
-
-        // Ensure folder exists
-        if (folder !== '/') {
-            const folderExists = await this.app.vault.adapter.exists(folder);
-            if (!folderExists) {
-                await this.app.vault.createFolder(folder);
-            }
-        }
-
-        let content: string;
-        let templatePath = this.settings.templatePath?.trim();
-        
-        if (templatePath) {
-            // Auto-add .md extension if missing
-            if (!templatePath.endsWith('.md')) {
-                templatePath = templatePath + '.md';
-            }
-            
-            const templateFile = this.app.vault.getAbstractFileByPath(templatePath);
-            
-            if (templateFile instanceof TFile) {
-                const templateContent = await this.app.vault.read(templateFile);
-                content = this.applyTemplate(templateContent, text, audioFile, aiText);
-            } else {
-                // Template not found, fallback to formatted text
-                console.warn(`[ASR Plugin] Template file not found at path: ${templatePath}`);
-                content = this.formatTranscriptionText(text, audioFile, aiText);
-            }
-        } else {
-            content = this.formatTranscriptionText(text, audioFile, aiText);
-        }
-
-        const noteFile = await this.app.vault.create(path, content);
-        const leaf = this.app.workspace.getLeaf(true);
-        await leaf.openFile(noteFile);
-    }
-
-    /**
-     * Format transcription text with audio link and optional timestamp/separator
-     */
-    private formatTranscriptionText(text: string, audioFile?: TFile, aiText?: string): string {
-        let result = text.trim();
-
-        if (this.settings.addTimestamp) {
-            const timestamp = moment().format('YYYY-MM-DD HH:mm:ss');
-            result = `[${timestamp}] ${result}`;
-        }
-        
-        if (aiText) {
-            result += `
-
-> [!AI] AI Polish
-> ${aiText.trim()}`;
-        }
-
-        if (audioFile) {
-            result = `![[${audioFile.path}]]
-${result}`;
-        }
-
-        if (this.settings.addSeparator) {
-            result = `---
-${result}
-`;
-        } else {
-            result = `${result}
-`;
-        }
-
-        return result;
-    }
-
-    /**
-     * Apply template variables to template content
-     */
-    private applyTemplate(template: string, transcription: string, audioFile?: TFile, aiText?: string): string {
-        const now = moment();
-        const vars: Record<string, string> = {
-            '{{date}}': now.format('YYYY-MM-DD'),
-            '{{time}}': now.format('HH:mm:ss'),
-            '{{datetime}}': now.format('YYYY-MM-DD HH:mm:ss'),
-            '{{transcription}}': transcription,
-            '{{content}}': transcription,
-            '{{text}}': transcription,
-            '{{audio}}': audioFile ? `![[${audioFile.path}]]` : '',
-            '{{audio_link}}': audioFile ? `![[${audioFile.path}]]` : '',
-            '{{aiText}}': aiText || ''
-        };
-
-        let result = template;
-        for (const [key, value] of Object.entries(vars)) {
-            // Replace all occurrences
-            result = result.split(key).join(value);
-        }
-        return result;
-    }
-
     onunload() {
         if (this.recorder) {
             this.recorder.stop();
@@ -353,6 +267,7 @@ ${result}
         // Update Managers
         this.transcriptionManager.updateSettings(this.settings);
         this.llmManager.updateSettings(this.settings);
+        this.noteService.updateSettings(this.settings);
         this.textInserter = new TextInserter(this.app, this.settings);
         
         // Update action manager if needed
