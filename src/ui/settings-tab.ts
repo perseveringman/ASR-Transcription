@@ -44,17 +44,43 @@ export class ASRSettingTab extends PluginSettingTab {
                 }));
 
         if (this.plugin.settings.enableAiPolishing) {
-             new Setting(containerEl)
-                .setName('System prompt')
-                .setDesc('Instructions for the AI on how to polish the text')
-                .addTextArea(text => text
-                    .setPlaceholder('You are a helpful assistant...')
-                    .setValue(this.plugin.settings.systemPrompt)
-                    .onChange(async (value) => {
-                        this.plugin.settings.systemPrompt = value;
+            // Style Preset Selector
+            new Setting(containerEl)
+                .setName('Polishing style')
+                .setDesc('Select a style preset for the AI polishing')
+                .addDropdown(dropdown => {
+                    this.plugin.settings.stylePresets.forEach(preset => {
+                        dropdown.addOption(preset.id, preset.name);
+                    });
+                    dropdown.setValue(this.plugin.settings.selectedStylePresetId || 'default');
+                    dropdown.onChange(async (value) => {
+                        this.plugin.settings.selectedStylePresetId = value;
                         await this.plugin.saveSettings();
-                    })
-                    .inputEl.rows = 5);
+                        refresh();
+                    });
+                });
+
+            // Prompt Editor for Current Preset
+            const currentPreset = this.plugin.settings.stylePresets.find(p => p.id === this.plugin.settings.selectedStylePresetId) 
+                                || this.plugin.settings.stylePresets[0];
+
+            if (currentPreset) {
+                new Setting(containerEl)
+                    .setName('Style prompt')
+                    .setDesc(`Customize the instructions for "${currentPreset.name}"`)
+                    .addTextArea(text => text
+                        .setPlaceholder('You are a helpful assistant...')
+                        .setValue(currentPreset.prompt)
+                        .onChange(async (value) => {
+                            currentPreset.prompt = value;
+                            // Sync legacy field if default is selected
+                            if (currentPreset.id === 'default') {
+                                this.plugin.settings.systemPrompt = value;
+                            }
+                            await this.plugin.saveSettings();
+                        })
+                        .inputEl.rows = 8);
+            }
         }
 
         // 5. Advanced Settings

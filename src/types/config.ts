@@ -66,8 +66,46 @@ export interface PluginSettings {
     deepseekApiKey: string;
     deepseekModel: string;
 
+    // Style Presets
+    stylePresets: StylePreset[];
+    selectedStylePresetId: string;
+
     actionUsageCounts: Record<string, number>;
 }
+
+export interface StylePreset {
+    id: string;
+    name: string;
+    prompt: string;
+}
+
+export const DEFAULT_STYLE_PRESETS: StylePreset[] = [
+    {
+        id: 'default',
+        name: 'Default (Generic)',
+        prompt: "You are a helpful assistant that polishes transcribed speech. Your task is to fix typos, remove redundancies (like 'um', 'ah', repeated words), and ensure sentences are grammatically correct and flow smoothly. DO NOT change the original structure, meaning, or tone. DO NOT add any introductory or concluding remarks. Output ONLY the polished text."
+    },
+    {
+        id: 'meeting-minutes',
+        name: '📝 Meeting Minutes',
+        prompt: "You are a professional meeting secretary. Transform the following transcript into structured meeting minutes.\n\nRequirements:\n1. **Summary**: A brief 1-sentence summary of the discussion.\n2. **Key Points**: Bullet points of main topics discussed.\n3. **Action Items**: A checklist of tasks with assignees (if mentioned) and deadlines.\n4. **Decisions**: Key decisions made.\n\nKeep the tone professional and objective. Remove filler words and irrelevant small talk."
+    },
+    {
+        id: 'spoken-to-written',
+        name: '🎙️ Spoken to Written',
+        prompt: "You are an expert editor. Convert the following spoken transcript into a well-written, coherent article or prose.\n\nRequirements:\n- Remove all filler words, false starts, and repetitions.\n- Improve sentence structure and flow.\n- Merge short, choppy sentences into fluid paragraphs.\n- Maintain the speaker's original voice and intent but make it read like a written piece.\n- Add appropriate headings if the content is long."
+    },
+    {
+        id: 'flash-idea',
+        name: '🧠 Flash Idea',
+        prompt: "You are a personal knowledge assistant. The user has just dictated a quick thought or idea. Your job is to capture it faithfully but cleanly.\n\nRequirements:\n- Fix speech recognition errors (typos, homophones).\n- Remove 'um's and 'ah's.\n- Keep the text raw and authentic.\n- Do NOT summarize or restructure. Just polish the syntax."
+    },
+    {
+        id: 'social-media',
+        name: '🐦 Social Media Thread',
+        prompt: "You are a social media expert. Convert the transcript into an engaging Twitter/X thread or LinkedIn post.\n\nRequirements:\n- Use a hook in the first line.\n- Use short, punchy paragraphs.\n- Use appropriate emojis.\n- Add relevant hashtags at the end.\n- Ensure the tone is engaging and viral-worthy."
+    }
+];
 
 export const DEFAULT_SETTINGS: PluginSettings = {
     transcriptionProvider: TranscriptionProvider.ZHIPU,
@@ -90,7 +128,10 @@ export const DEFAULT_SETTINGS: PluginSettings = {
     // AI Polishing Defaults
     enableAiPolishing: false,
     llmProvider: LLMProvider.OPENROUTER,
-    systemPrompt: "You are a helpful assistant that polishes transcribed speech. Your task is to fix typos, remove redundancies (like 'um', 'ah', repeated words), and ensure sentences are grammatically correct and flow smoothly. DO NOT change the original structure, meaning, or tone. DO NOT add any introductory or concluding remarks. Output ONLY the polished text.",
+    systemPrompt: DEFAULT_STYLE_PRESETS[0].prompt, // Keep for backward compatibility or simple usage
+    
+    stylePresets: DEFAULT_STYLE_PRESETS,
+    selectedStylePresetId: 'default',
 
     openRouterApiKey: '',
     openRouterModel: 'google/gemini-2.0-flash-exp:free',

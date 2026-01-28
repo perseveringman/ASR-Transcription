@@ -29,8 +29,17 @@ export class LLMManager {
             return '';
         }
         
+        // Find the selected preset
+        let systemPrompt = this.settings.systemPrompt;
+        if (this.settings.selectedStylePresetId) {
+            const preset = this.settings.stylePresets.find(p => p.id === this.settings.selectedStylePresetId);
+            if (preset) {
+                systemPrompt = preset.prompt;
+            }
+        }
+
         const messages: LLMMessage[] = [
-            { role: 'system', content: this.settings.systemPrompt },
+            { role: 'system', content: systemPrompt },
             { role: 'user', content: text }
         ];
 
