@@ -1,102 +1,87 @@
 # Architecture & Development Guide
 
 ## Overview
-This plugin is built as a modular **Audio Intelligence Platform** for Obsidian. It decouples the *capability* of transcribing audio and generating text from the *features* that user interacts with.
+This plugin has evolved into a modular **AI Intelligence Platform** for Obsidian. It orchestrates three main capabilities:
+1.  **Audio Ingestion (ASR)**: Capturing raw thoughts.
+2.  **Text Refinement (LLM)**: Polishing and structuring text.
+3.  **Cognitive Actions (Agents)**: Applying mental models and batch processing to notes.
 
 ## Core Components
 
 ### 1. Managers
-Managers are high-level orchestrators that abstract the complexity of underlying services.
+Managers are the central nervous system of the plugin.
 
 *   **`TranscriptionManager`**:
-    *   **Role**: Handles all speech-to-text operations.
-    *   **Responsibilities**:
-        *   Instantiates the correct provider (Zhipu, Volcengine, etc.).
-        *   Checks file constraints (max size, duration).
-        *   Handles chunking logic for long audio files.
-        *   Standardizes error reporting.
+    *   **Role**: Handles the physical world (Audio).
+    *   **Responsibilities**: Audio validation, chunking, and routing to ASR providers (Zhipu, Volcengine).
 
 *   **`LLMManager`**:
-    *   **Role**: Handles all text-generation/chat operations.
+    *   **Role**: Handles the cognitive world (Intelligence).
     *   **Responsibilities**:
-        *   Instantiates the correct LLM provider (OpenAI, Gemini, Claude, etc.).
-        *   Provides a unified `complete(messages)` interface.
-        *   Manages API keys and connection settings centrally.
+        *   Unified interface for all LLM providers (OpenAI, Gemini, Claude, Minimax, etc.).
+        *   Manages context window limitations and API configurations.
 
-*   **`ActionManager`** (New):
-    *   **Role**: Manages the registry of "AI Actions" (shortcuts).
+*   **`ActionManager` (The Brain)**:
+    *   **Role**: Orchestrates "AI Emergence" workflows.
     *   **Responsibilities**:
-        *   Stores available actions (e.g., "Value Clarification").
-        *   Executes actions by fetching note content, calling `LLMManager`, and handling the output (append/replace).
+        *   **Registry**: Maintains the library of cognitive actions (e.g., "Socratic Questioning", "Master Debate").
+        *   **Context Resolution**: Determines what data to process (Current Note, Selection, Folder, Tag, or Date Range).
+        *   **Batch Processing**: Aggregates content from multiple files (e.g., `fetchFilesByTag`, `combineFilesContent`) to allow high-level analysis.
+        *   **Output Handling**: Generates new "Insight Notes" with specialized frontmatter (`topic`, `tags`) and backlinks to sources.
 
 ### 2. Services
-Services are low-level implementations of specific API providers.
+Low-level implementations of external APIs.
 
-*   `src/services/transcription/`: Contains implementations like `ZhipuTranscriptionService`.
-*   `src/services/llm/`: Contains implementations like `OpenAICompatibleLLMService`, `GeminiLLMService`.
-*   `AudioRecorder`: Wraps the browser's MediaRecorder API.
+*   `src/services/transcription/`: ASR adapters (Volcengine, Zhipu).
+*   `src/services/llm/`: LLM adapters (OpenAI-compatible, Gemini, etc.).
+*   `src/services/audio-recorder.ts`: Browser MediaRecorder wrapper.
+*   `src/services/text-inserter.ts`: Helper for Editor manipulation.
 
 ### 3. UI Components
 
-*   **`AISidebarView`** (`src/ui/sidebar/`):
-    *   A custom ItemView that lives in the Obsidian Right Sidebar.
-    *   Displays categories of AI Actions.
-    *   Triggers `ActionManager.executeAction()` on click.
+*   **`AISidebarView`**: The command center for triggering Thinking Actions.
+*   **`RecordingModal`**: The interface for voice capture.
+*   **`TimeRangeModal` / `TagSelectionModal`**: UI for selecting batch processing contexts.
 
-### 4. Features (Workflows)
-Features combine Managers and Services to deliver value.
-
-*   **Transcription**: The basic flow of Audio -> Text.
-*   **AI Polishing**: The flow of Audio -> Text -> LLM Polish -> Final Text.
-*   **AI Sidebar Shortcuts**: The flow of Current Note -> LLM Action -> Append Result.
-
-## Data Flow
+## Data Flow: The "Emergence" Pipeline
 
 ```mermaid
 graph TD
-    User[User Action] --> Plugin
-    Plugin --> Recorder[AudioRecorder]
-    Recorder --> AudioFile[Blob / File]
+    %% Input Sources
+    UserVoice[Voice Input] --> TM[TranscriptionManager]
+    UserNote[Current Note] --> AM[ActionManager]
+    UserFolder[Folder/Tag/Date] --> AM
     
-    Plugin --> TM[TranscriptionManager]
-    AudioFile --> TM
-    TM --> ASR_API[External ASR API]
-    ASR_API --> RawText[Raw Text]
+    %% Processing
+    TM -->|Raw Text| AM
     
-    Plugin --> LM[LLMManager]
-    RawText --> LM
-    LM --> LLM_API[External LLM API]
-    LLM_API --> PolishedText[Polished Text]
+    AM -->|Context + Prompt| LM[LLMManager]
+    LM -->|Cognitive Model| AI[AI Provider]
+    AI -->|Insight| LM
     
-    RawText --> Inserter[TextInserter]
-    PolishedText --> Inserter
-    Inserter --> Editor[Obsidian Editor]
+    %% Output
+    LM -->|Result| OutputHandler
     
-    %% AI Sidebar Flow
-    User --> Sidebar[AISidebarView]
-    Sidebar --> AM[ActionManager]
-    AM --> EditorRead[Read Current Note]
-    EditorRead --> LM
-    LM --> AIResult[AI Analysis]
-    AIResult --> AM
-    AM --> EditorWrite[Append to Note]
+    subgraph Output Options
+        OutputHandler -->|Append| CurrentNote
+        OutputHandler -->|Create| InsightNote[New Insight Note]
+    end
+    
+    %% Insight Note Structure
+    InsightNote -.->|Backlink| UserNote
+    InsightNote -.->|Frontmatter| Metadata[Topic/Model/Tags]
 ```
 
-## Adding a New Provider
+## Adding New Capabilities
 
-### Adding an LLM Provider
-1.  Define the provider enum in `src/types/config.ts`.
-2.  Create a service class in `src/services/llm/` implementing `LLMService`.
-3.  Register it in `LLMServiceFactory` (or `LLMManager`).
-4.  Add settings UI in `src/ui/settings-tab.ts`.
+### Adding a Thinking Action
+1.  Open `src/managers/action-manager.ts`.
+2.  Define a new `AIAction` object in `loadDefaultActions()`.
+    *   Choose a category (or create new).
+    *   Define `systemPrompt`: This is where the "cognitive model" lives.
+    *   Define `outputMode`: Usually `new-note` for deep analysis.
+3.  The UI updates automatically.
 
-### Adding an ASR Provider
-1.  Define the provider enum in `src/types/config.ts`.
-2.  Create a service class in `src/services/transcription/` implementing `TranscriptionService`.
-3.  Register it in `TranscriptionServiceFactory` (or `TranscriptionManager`).
-4.  Add settings UI in `src/ui/settings-tab.ts`.
-
-### Adding a New AI Action
-1.  Edit `src/managers/action-manager.ts`.
-2.  Add a new entry to the `categories` list in `loadDefaultActions()`.
-3.  Define the `systemPrompt`, `name`, and `description`.
+### Adding Providers
+*   **LLM**: `src/services/llm/` + `LLMManager` registration.
+*   **ASR**: `src/services/transcription/` + `TranscriptionManager` registration.

@@ -1,77 +1,50 @@
 # Provider Setup Guide
 
-This plugin supports multiple AI providers for both Speech-to-Text (Transcription) and Text Processing (Polishing).
+This plugin is a bridge between Obsidian and powerful AI services. It uses **ASR Providers** for hearing (Speech-to-Text) and **LLM Providers** for thinking (Polishing & Cognitive Actions).
 
-## Transcription Providers (ASR)
+## 1. Transcription Providers (ASR)
+*Used for: Voice Recording, Audio File Transcription.*
 
-### 1. Zhipu AI (智谱 AI)
+### Zhipu AI (智谱 AI)
 *   **Website**: [open.bigmodel.cn](https://open.bigmodel.cn/)
 *   **Model**: GLM-ASR-2512
-*   **Setup**:
-    1.  Register and create an API Key.
-    2.  In Plugin Settings > Transcription, select "Zhipu AI".
-    3.  Paste your API Key.
+*   **Why use it**: Very accurate for Mandarin/English mix; cost-effective.
+*   **Setup**: Settings > Transcription > Zhipu AI > Paste API Key.
 
-### 2. Volcengine (火山引擎)
+### Volcengine (火山引擎)
 *   **Website**: [console.volcengine.com](https://console.volcengine.com/speech/service/8)
 *   **Model**: Doubao (Flash Edition)
-*   **Setup**:
-    1.  Create a "Speech Recognition" project in Volcengine console.
-    2.  Get your **App ID** and **Access Token**.
-    3.  In Plugin Settings > Transcription, select "VolcEngine doubao".
-    4.  Enter App ID and Access Token.
+*   **Why use it**: Enterprise-grade recognition accuracy.
+*   **Setup**: Settings > Transcription > VolcEngine > Enter App ID & Access Token.
 
 ---
 
-## LLM Providers (AI Polishing)
+## 2. Intelligence Providers (LLM)
+*Used for: Text Polishing, Thinking Actions (Summarization, Debates, Reviews).*
 
-### 1. OpenRouter
+You can choose different providers based on your needs (e.g., use a cheaper model for daily summaries and a smarter one for "Master Debates").
+
+### OpenRouter (Recommended)
 *   **Website**: [openrouter.ai](https://openrouter.ai/)
-*   **Best for**: Accessing many models (GPT-4, Claude 3, Llama 3) with one key.
+*   **Why use it**: Access to **Claude 3.5 Sonnet**, **GPT-4o**, **Llama 3** via a single key. No need to manage multiple subscriptions.
 *   **Setup**:
-    1.  Get an API Key from OpenRouter.
-    2.  Select "OpenRouter" in Plugin Settings > Intelligence (LLM).
-    3.  Enter Key and Model ID (e.g., `google/gemini-2.0-flash-exp:free`).
+    1.  Get Key from OpenRouter.
+    2.  Settings > Intelligence > OpenRouter.
+    3.  Model ID: `anthropic/claude-3.5-sonnet` (Recommended for complex thinking) or `google/gemini-flash-1.5` (For speed).
 
-### 2. Google Gemini
+### Google Gemini
 *   **Website**: [aistudio.google.com](https://aistudio.google.com/)
-*   **Setup**:
-    1.  Get a free API Key.
-    2.  Select "Google Gemini".
-    3.  Enter Key. Model defaults to `gemini-2.0-flash`.
+*   **Why use it**: **Free tier** available; massive context window (good for analyzing large folders of notes).
+*   **Setup**: Settings > Intelligence > Google Gemini.
 
-### 3. OpenAI
-*   **Website**: [platform.openai.com](https://platform.openai.com/)
-*   **Setup**:
-    1.  Get an API Key.
-    2.  Select "OpenAI".
-    3.  Enter Key.
-    *   **Proxy Support**: If you use a proxy, enter the Base URL (e.g., `https://api.yourproxy.com/v1`).
-
-### 4. DeepSeek (深度求索)
+### DeepSeek (深度求索)
 *   **Website**: [platform.deepseek.com](https://platform.deepseek.com/)
-*   **Setup**:
-    1.  Get an API Key.
-    2.  Select "DeepSeek".
-    3.  Enter Key.
+*   **Why use it**: Incredible reasoning capabilities (DeepSeek-V3/R1) at low cost. Excellent for "First Principles" and "Coding" tasks.
+*   **Setup**: Settings > Intelligence > DeepSeek.
 
-### 5. Zhipu AI (GLM-4)
-*   **Website**: [open.bigmodel.cn](https://open.bigmodel.cn/)
-*   **Note**: You can reuse your ASR key or use a different one.
-*   **Setup**:
-    1.  Select "Zhipu AI".
-    2.  Enter API Key.
+### Others
+*   **OpenAI**: The standard. Good for general tasks.
+*   **Anthropic (Direct)**: If you have a direct Claude API key.
+*   **Minimax**: Good for creative writing / roleplay.
+*   **Zhipu AI (GLM-4)**: Good general Chinese performance.
 
-### 6. Anthropic (Claude)
-*   **Website**: [console.anthropic.com](https://console.anthropic.com/)
-*   **Setup**:
-    1.  Get an API Key.
-    2.  Select "Anthropic Claude".
-    3.  Enter Key.
-
-### 7. Minimax
-*   **Website**: [platform.minimaxi.com](https://platform.minimaxi.com/)
-*   **Setup**:
-    1.  Get API Key and Group ID.
-    2.  Select "Minimax".
-    3.  Enter both values.
