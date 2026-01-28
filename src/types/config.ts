@@ -71,6 +71,7 @@ export interface PluginSettings {
     selectedStylePresetId: string;
 
     actionUsageCounts: Record<string, number>;
+    customPrompts: Record<string, string>;
 }
 
 export interface StylePreset {
@@ -156,5 +157,6 @@ export const DEFAULT_SETTINGS: PluginSettings = {
     deepseekApiKey: '',
     deepseekModel: 'deepseek-chat',
 
-    actionUsageCounts: {}
+    actionUsageCounts: {},
+    customPrompts: {}
 };
