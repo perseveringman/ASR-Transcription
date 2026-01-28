@@ -182,7 +182,7 @@ export default class ASRPlugin extends Plugin {
         }
     }
 
-    async handleTranscription(audio: Blob | File) {
+    async handleTranscription(audio: Blob | File, styleId?: string) {
         const notice = new Notice('Processing audio...', 0);
 
         try {
@@ -214,7 +214,8 @@ export default class ASRPlugin extends Plugin {
             // 3. Process AI Polishing using Manager
             let aiText = '';
             try {
-                aiText = await this.llmManager.polish(fullText);
+                // Pass the selected style ID if available
+                aiText = await this.llmManager.polish(fullText, styleId);
             } catch (err: unknown) {
                  const message = err instanceof Error ? err.message : String(err);
                  new Notice(`AI Polishing failed: ${message}`, 5000);

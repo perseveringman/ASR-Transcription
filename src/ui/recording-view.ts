@@ -1,6 +1,7 @@
-import { App, Modal, Notice } from 'obsidian';
+import { App, Modal, Notice, Setting } from 'obsidian';
 import { AudioRecorder } from '../services/audio-recorder';
 import { RecordingState } from '../types/audio';
+import { DEFAULT_STYLE_PRESETS } from '../types/config';
 
 export class RecordingModal extends Modal {
     private recorder: AudioRecorder;
@@ -8,10 +9,16 @@ export class RecordingModal extends Modal {
     private timerEl!: HTMLElement;
     private startStopBtn!: HTMLButtonElement;
     private uploadBtn!: HTMLButtonElement;
+    private styleSelectEl!: HTMLSelectElement;
 
     private handlers: { [key: string]: (arg: unknown) => void } = {};
 
-    constructor(app: App, recorder: AudioRecorder, private onRecordingComplete: (blob: Blob) => Promise<void>) {
+    constructor(
+        app: App, 
+        recorder: AudioRecorder, 
+        private onRecordingComplete: (blob: Blob, styleId?: string) => Promise<void>,
+        private initialStyleId: string = 'default'
+    ) {
         super(app);
         this.recorder = recorder;
     }
@@ -25,6 +32,19 @@ export class RecordingModal extends Modal {
 
         this.statusEl = contentEl.createEl('div', { text: 'Ready to record', cls: 'asr-status' });
         this.timerEl = contentEl.createEl('div', { text: '00:00', cls: 'asr-timer' });
+
+        // Style Selector
+        const styleContainer = contentEl.createEl('div', { cls: 'asr-style-container' });
+        new Setting(styleContainer)
+            .setName('Output style')
+            .setDesc('How should the AI rewrite this?')
+            .addDropdown(dropdown => {
+                this.styleSelectEl = dropdown.selectEl;
+                DEFAULT_STYLE_PRESETS.forEach(preset => {
+                    dropdown.addOption(preset.id, preset.name);
+                });
+                dropdown.setValue(this.initialStyleId);
+            });
 
         const btnContainer = contentEl.createEl('div', { cls: 'asr-btn-container' });
 
@@ -54,7 +74,8 @@ export class RecordingModal extends Modal {
         this.handlers['durationchange'] = (seconds: unknown) => this.updateTimer(seconds as number);
         this.handlers['recorded'] = (blob: unknown) => {
             void (async () => {
-                await this.onRecordingComplete(blob as Blob);
+                const selectedStyle = this.styleSelectEl ? this.styleSelectEl.value : undefined;
+                await this.onRecordingComplete(blob as Blob, selectedStyle);
                 this.close();
             })();
         };
@@ -112,7 +133,8 @@ export class RecordingModal extends Modal {
                     new Notice('File too large (max 25mb)');
                     return;
                 }
-                await this.onRecordingComplete(file);
+                const selectedStyle = this.styleSelectEl ? this.styleSelectEl.value : undefined;
+                await this.onRecordingComplete(file, selectedStyle);
                 this.close();
             }
         };
@@ -128,17 +150,20 @@ export class RecordingModal extends Modal {
                 this.startStopBtn.setText('Start recording');
                 this.startStopBtn.disabled = false;
                 this.uploadBtn.disabled = false;
+                if (this.styleSelectEl) this.styleSelectEl.disabled = false;
                 break;
             case RecordingState.RECORDING:
                 this.statusEl.setText('Recording...');
                 this.startStopBtn.setText('Stop recording');
                 this.startStopBtn.disabled = false;
                 this.uploadBtn.disabled = true;
+                if (this.styleSelectEl) this.styleSelectEl.disabled = true;
                 break;
             case RecordingState.PROCESSING:
                 this.statusEl.setText('Processing...');
                 this.startStopBtn.disabled = true;
                 this.uploadBtn.disabled = true;
+                if (this.styleSelectEl) this.styleSelectEl.disabled = true;
                 break;
         }
     }

@@ -24,15 +24,19 @@ export class LLMManager {
     /**
      * Convenience method to polish text using the configured System Prompt.
      */
-    async polish(text: string): Promise<string> {
+    async polish(text: string, styleId?: string): Promise<string> {
         if (!this.settings.enableAiPolishing) {
             return '';
         }
         
         // Find the selected preset
         let systemPrompt = this.settings.systemPrompt;
-        if (this.settings.selectedStylePresetId) {
-            const preset = this.settings.stylePresets.find(p => p.id === this.settings.selectedStylePresetId);
+        
+        // Priority: runtime styleId > settings default
+        const targetStyleId = styleId || this.settings.selectedStylePresetId;
+        
+        if (targetStyleId) {
+            const preset = this.settings.stylePresets.find(p => p.id === targetStyleId);
             if (preset) {
                 systemPrompt = preset.prompt;
             }
