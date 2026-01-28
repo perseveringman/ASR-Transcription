@@ -3,6 +3,7 @@ import ASRPlugin from '../main';
 import { GeneralSettingsTab } from './settings/general-settings';
 import { TranscriptionSettingsTab } from './settings/transcription-settings';
 import { LLMSettingsTab } from './settings/llm-settings';
+import { PromptEditModal } from './modals/prompt-edit-modal';
 
 export class ASRSettingTab extends PluginSettingTab {
     plugin: ASRPlugin;
@@ -83,7 +84,61 @@ export class ASRSettingTab extends PluginSettingTab {
             }
         }
 
-        // 5. Advanced Settings
+        // 5. Thinking Models Configuration (New Section)
+        new Setting(containerEl)
+            .setName('Thinking models configuration')
+            .setHeading()
+            .setDesc('Customize the system prompts for various thinking actions.');
+
+        const categories = this.plugin.actionManager.getCategories();
+        
+        for (const category of categories) {
+            // Category Header (Simple text for now, could be collapsible)
+            new Setting(containerEl)
+                .setName(category.name)
+                .setHeading()
+                .setClass('thinking-model-category-header'); // Add class for potential CSS styling
+
+            for (const sub of category.subCategories) {
+                // Subcategory Label
+                containerEl.createEl('div', { 
+                    text: sub.name, 
+                    cls: 'thinking-model-subcategory-label',
+                    attr: { style: 'font-weight: bold; margin-top: 10px; margin-bottom: 5px; color: var(--text-muted);' }
+                });
+
+                for (const action of sub.actions) {
+                    const isCustomized = !!this.plugin.settings.customPrompts[action.id];
+                    
+                    new Setting(containerEl)
+                        .setName(action.name)
+                        .setDesc(action.description || '')
+                        .addExtraButton(btn => btn
+                            .setIcon('pencil')
+                            .setTooltip('Edit System Prompt')
+                            .onClick(() => {
+                                new PromptEditModal(this.app, this.plugin, action.id, action.name).open();
+                            }))
+                        .addExtraButton(btn => {
+                            btn.setIcon('reset')
+                               .setTooltip('Reset to Default')
+                               .setDisabled(!isCustomized)
+                               .onClick(async () => {
+                                   delete this.plugin.settings.customPrompts[action.id];
+                                   await this.plugin.saveSettings();
+                                   refresh(); // Refresh to update UI state
+                               });
+                            // Visually indicate if it's customized
+                            if (isCustomized) {
+                                btn.extraSettingsEl.style.color = 'var(--text-accent)';
+                            }
+                        });
+                }
+            }
+        }
+
+
+        // 6. Advanced Settings
         new Setting(containerEl)
             .setName('Advanced')
             .setHeading();
