@@ -4,6 +4,8 @@ import { RootCategory, AIAction, SourceConfig } from '../types/action';
 import { PluginSettings } from '../types/config';
 import { TimeRangeModal } from '../ui/modals/time-range-modal';
 import { TagSelectionModal } from '../ui/modals/tag-selection-modal';
+import { ExtractedMetadata } from '../types/metadata';
+import { safeParseJson } from '../utils/json-utils';
 
 export class ActionManager {
     private categories: RootCategory[] = [];
@@ -106,6 +108,14 @@ export class ActionManager {
                         id: 'content-processing',
                         name: '内容处理',
                         actions: [
+                            {
+                                id: 'extract-metadata',
+                                name: '提取元数据',
+                                description: '自动分析笔记并填充 Frontmatter',
+                                icon: 'file-json',
+                                outputMode: 'frontmatter',
+                                systemPrompt: this.getMetadataExtractionPrompt(),
+                            },
                             {
                                 id: 'core-summary',
                                 name: '核心摘要',
@@ -530,6 +540,21 @@ Topic: 3-5个字的简短主题（纯文本，不要加括号或任何格式）
 4. **经验总结**：[我们可以从中学到什么？下次如何改进]`;
     }
 
+    private getMetadataExtractionPrompt(): string {
+        return `Analyze the provided text and extract structured metadata.
+Output ONLY a valid JSON object matching this schema:
+{
+    "title": "A concise title for the note",
+    "tags": ["tag1", "tag2"],
+    "summary": "A one-sentence summary",
+    "actionItems": ["task 1", "task 2"],
+    "mood": "Optional mood/energy level",
+    "people": ["Name 1", "Name 2"],
+    "date": "YYYY-MM-DD"
+}
+If a field is not applicable, omit it. Do not include any other text, explanations, or markdown code blocks.`;
+    }
+
     public getCategories(): RootCategory[] {
         return this.categories;
     }
@@ -768,7 +793,11 @@ Topic: 3-5个字的简短主题（纯文本，不要加括号或任何格式）
     }
 
     private async handleOutput(action: AIAction, text: string, sourceFile: TFile | null, sourceFiles: TFile[] = [], start?: moment.Moment, end?: moment.Moment, contextInfo?: string) {
-        // ... (existing logic for 'append'/'replace' if needed, but 'new-note' handles most)
+        if (action.outputMode === 'frontmatter') {
+            await this.handleFrontmatterOutput(text, sourceFile);
+            return;
+        }
+
         if (action.outputMode === 'new-note') {
             await this.createNewNote(action, text, sourceFile, sourceFiles, start, end, contextInfo);
             return;
@@ -794,6 +823,55 @@ Topic: 3-5个字的简短主题（纯文本，不要加括号或任何格式）
                     editor.replaceRange(formattedText, { line: lineCountDef, ch: 0 });
                 }
             }
+        }
+    }
+
+    private async handleFrontmatterOutput(text: string, sourceFile: TFile | null) {
+        if (!sourceFile) {
+            new Notice('No source file to update frontmatter.');
+            return;
+        }
+
+        const data = safeParseJson<ExtractedMetadata>(text);
+        if (!data) {
+            new Notice('Failed to parse metadata from AI response.');
+            return;
+        }
+
+        try {
+            await this.app.fileManager.processFrontMatter(sourceFile, (fm) => {
+                if (data.title) fm['title'] = data.title;
+                if (data.summary) fm['summary'] = data.summary;
+                if (data.mood) fm['mood'] = data.mood;
+                if (data.date) fm['date'] = data.date;
+
+                if (data.tags && data.tags.length > 0) {
+                    const existingTags = new Set<string>();
+                    if (Array.isArray(fm['tags'])) {
+                        fm['tags'].forEach((t: string) => existingTags.add(t));
+                    } else if (typeof fm['tags'] === 'string') {
+                        fm['tags'].split(',').forEach((t: string) => existingTags.add(t.trim()));
+                    }
+                    data.tags.forEach(t => existingTags.add(t));
+                    fm['tags'] = Array.from(existingTags);
+                }
+
+                if (data.people && data.people.length > 0) {
+                    const existingPeople = new Set<string>(fm['people'] || []);
+                    data.people.forEach(p => existingPeople.add(p));
+                    fm['people'] = Array.from(existingPeople);
+                }
+
+                if (data.actionItems && data.actionItems.length > 0) {
+                    const existingActions = new Set<string>(fm['actionItems'] || []);
+                    data.actionItems.forEach(a => existingActions.add(a));
+                    fm['actionItems'] = Array.from(existingActions);
+                }
+            });
+            new Notice('Frontmatter updated successfully!');
+        } catch (error) {
+            console.error('Failed to update frontmatter:', error);
+            new Notice('Failed to update frontmatter.');
         }
     }
 

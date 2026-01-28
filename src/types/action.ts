@@ -5,7 +5,7 @@ export interface AIAction {
     icon?: string;
     systemPrompt: string;
     userPromptTemplate?: string; // {{content}} variable
-    outputMode: 'append' | 'replace' | 'new-note' | 'modal';
+    outputMode: 'append' | 'replace' | 'new-note' | 'modal' | 'frontmatter';
 }
 
 export type SourceType = 'current-note' | 'date-range' | 'current-folder' | 'tag' | 'selection';
