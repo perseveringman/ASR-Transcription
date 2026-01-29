@@ -1,35 +1,27 @@
 import { requestUrl, RequestUrlParam } from 'obsidian';
-import { LLMService, LLMMessage } from '../../types/llm';
+import { LLMService, LLMMessage, StreamCallback } from '../../types/llm';
 import { PluginSettings } from '../../types/config';
 
 export class GeminiLLMService implements LLMService {
     readonly name = 'Google Gemini';
+    private readonly baseUrl = 'https://generativelanguage.googleapis.com/v1beta/models';
 
     constructor(private settings: PluginSettings) {}
 
-    async complete(messages: LLMMessage[]): Promise<string> {
-        if (!this.settings.geminiApiKey) {
-            throw new Error('Gemini API key is not configured');
-        }
+    private getModel(): string {
+        return this.settings.geminiModel || 'gemini-2.0-flash';
+    }
 
-        const model = this.settings.geminiModel || 'gemini-2.0-flash';
-        const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${this.settings.geminiApiKey}`;
-
-        // Convert messages to Gemini format
-        // Gemini expects { role: "user" | "model", parts: [{ text: "..." }] }
-        // System prompt is best handled by "system_instruction" but v1beta support varies by model.
-        // For simplicity, we'll prepend system prompt to the first user message or use "user" role for system if needed, 
-        // but 'system' role is supported in newer models.
-        
+    private buildBody(messages: LLMMessage[]): Record<string, unknown> {
         const contents = messages
-            .filter(m => m.role !== 'system') // Filter out system for now, we'll handle it separately or prepend
+            .filter(m => m.role !== 'system')
             .map(m => ({
                 role: m.role === 'assistant' ? 'model' : 'user',
                 parts: [{ text: m.content }]
             }));
             
         const systemMessage = messages.find(m => m.role === 'system');
-        const body: any = {
+        const body: Record<string, unknown> = {
             contents: contents,
             generationConfig: {
                 temperature: 0.7
@@ -37,11 +29,20 @@ export class GeminiLLMService implements LLMService {
         };
 
         if (systemMessage) {
-            // Use system_instruction if available (Gemini 1.5+)
-             body.system_instruction = {
+            body.system_instruction = {
                 parts: [{ text: systemMessage.content }]
             };
         }
+
+        return body;
+    }
+
+    async complete(messages: LLMMessage[]): Promise<string> {
+        if (!this.settings.geminiApiKey) {
+            throw new Error('Gemini API key is not configured');
+        }
+
+        const url = `${this.baseUrl}/${this.getModel()}:generateContent?key=${this.settings.geminiApiKey}`;
 
         const request: RequestUrlParam = {
             url: url,
@@ -49,7 +50,7 @@ export class GeminiLLMService implements LLMService {
             headers: {
                 'Content-Type': 'application/json'
             },
-            body: JSON.stringify(body)
+            body: JSON.stringify(this.buildBody(messages))
         };
 
         try {
@@ -78,6 +79,89 @@ export class GeminiLLMService implements LLMService {
             return data.candidates[0].content.parts[0].text;
         } catch (error) {
             console.error('Gemini API request failed:', error);
+            throw error;
+        }
+    }
+
+    supportsStreaming(): boolean {
+        return true;
+    }
+
+    async stream(messages: LLMMessage[], onChunk: StreamCallback): Promise<string> {
+        if (!this.settings.geminiApiKey) {
+            throw new Error('Gemini API key is not configured');
+        }
+
+        const url = `${this.baseUrl}/${this.getModel()}:streamGenerateContent?alt=sse&key=${this.settings.geminiApiKey}`;
+
+        try {
+            const response = await fetch(url, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(this.buildBody(messages))
+            });
+
+            if (!response.ok) {
+                const errorText = await response.text();
+                let errorMessage = `Status ${response.status}`;
+                try {
+                    const errorBody = JSON.parse(errorText);
+                    if (errorBody.error?.message) {
+                        errorMessage = errorBody.error.message;
+                    }
+                } catch {
+                    errorMessage = errorText.substring(0, 200);
+                }
+                throw new Error(`Gemini error: ${errorMessage}`);
+            }
+
+            const reader = response.body?.getReader();
+            if (!reader) {
+                throw new Error('Response body is not readable');
+            }
+
+            const decoder = new TextDecoder();
+            let fullContent = '';
+            let buffer = '';
+
+            while (true) {
+                const { done, value } = await reader.read();
+                
+                if (done) {
+                    onChunk('', true);
+                    break;
+                }
+
+                buffer += decoder.decode(value, { stream: true });
+                const lines = buffer.split('\n');
+                buffer = lines.pop() || '';
+
+                for (const line of lines) {
+                    const trimmed = line.trim();
+                    if (!trimmed || !trimmed.startsWith('data:')) continue;
+                    
+                    const data = trimmed.slice(5).trim();
+                    if (!data) continue;
+
+                    try {
+                        const parsed = JSON.parse(data);
+                        // Gemini streaming format
+                        const text = parsed.candidates?.[0]?.content?.parts?.[0]?.text;
+                        if (text) {
+                            fullContent += text;
+                            onChunk(text, false);
+                        }
+                    } catch {
+                        // Skip malformed JSON
+                    }
+                }
+            }
+
+            return fullContent;
+        } catch (error) {
+            console.error('Gemini streaming request failed:', error);
             throw error;
         }
     }
