@@ -1,19 +1,27 @@
 import { requestUrl, RequestUrlParam } from 'obsidian';
-import { LLMService, LLMMessage } from '../../types/llm';
+import { LLMService, LLMMessage, StreamCallback } from '../../types/llm';
 import { PluginSettings } from '../../types/config';
 
 export class OpenRouterLLMService implements LLMService {
     readonly name = 'OpenRouter';
+    private readonly baseUrl = 'https://openrouter.ai/api/v1/chat/completions';
 
     constructor(private settings: PluginSettings) {}
+
+    private getHeaders(): Record<string, string> {
+        return {
+            'Authorization': `Bearer ${this.settings.openRouterApiKey}`,
+            'Content-Type': 'application/json',
+            'HTTP-Referer': 'https://github.com/obsidian-plugins/asr-transcription',
+            'X-Title': 'Obsidian ASR Plugin'
+        };
+    }
 
     async complete(messages: LLMMessage[]): Promise<string> {
         if (!this.settings.openRouterApiKey) {
             throw new Error('OpenRouter API key is not configured');
         }
 
-        const url = 'https://openrouter.ai/api/v1/chat/completions';
-        
         const body = {
             model: this.settings.openRouterModel,
             messages: messages,
@@ -21,14 +29,9 @@ export class OpenRouterLLMService implements LLMService {
         };
 
         const request: RequestUrlParam = {
-            url: url,
+            url: this.baseUrl,
             method: 'POST',
-            headers: {
-                'Authorization': `Bearer ${this.settings.openRouterApiKey}`,
-                'Content-Type': 'application/json',
-                'HTTP-Referer': 'https://github.com/obsidian-plugins/asr-transcription', // Required by OpenRouter
-                'X-Title': 'Obsidian ASR Plugin' // Optional
-            },
+            headers: this.getHeaders(),
             body: JSON.stringify(body)
         };
 
@@ -42,7 +45,7 @@ export class OpenRouterLLMService implements LLMService {
                     if (errorBody.error && errorBody.error.message) {
                         errorMessage = errorBody.error.message;
                     } else {
-                        errorMessage = response.text.substring(0, 200); // Truncate if too long
+                        errorMessage = response.text.substring(0, 200);
                     }
                 } catch {
                     errorMessage = response.text.substring(0, 200);
@@ -58,6 +61,94 @@ export class OpenRouterLLMService implements LLMService {
             return data.choices[0].message.content;
         } catch (error) {
             console.error('OpenRouter API request failed:', error);
+            throw error;
+        }
+    }
+
+    supportsStreaming(): boolean {
+        return true;
+    }
+
+    async stream(messages: LLMMessage[], onChunk: StreamCallback): Promise<string> {
+        if (!this.settings.openRouterApiKey) {
+            throw new Error('OpenRouter API key is not configured');
+        }
+
+        const body = {
+            model: this.settings.openRouterModel,
+            messages: messages,
+            temperature: 0.7,
+            stream: true
+        };
+
+        try {
+            const response = await fetch(this.baseUrl, {
+                method: 'POST',
+                headers: this.getHeaders(),
+                body: JSON.stringify(body)
+            });
+
+            if (!response.ok) {
+                const errorText = await response.text();
+                let errorMessage = `Status ${response.status}`;
+                try {
+                    const errorBody = JSON.parse(errorText);
+                    if (errorBody.error?.message) {
+                        errorMessage = errorBody.error.message;
+                    }
+                } catch {
+                    errorMessage = errorText.substring(0, 200);
+                }
+                throw new Error(`OpenRouter error: ${errorMessage}`);
+            }
+
+            const reader = response.body?.getReader();
+            if (!reader) {
+                throw new Error('Response body is not readable');
+            }
+
+            const decoder = new TextDecoder();
+            let fullContent = '';
+            let buffer = '';
+
+            while (true) {
+                const { done, value } = await reader.read();
+                
+                if (done) {
+                    onChunk('', true);
+                    break;
+                }
+
+                buffer += decoder.decode(value, { stream: true });
+                const lines = buffer.split('\n');
+                buffer = lines.pop() || '';
+
+                for (const line of lines) {
+                    const trimmed = line.trim();
+                    if (!trimmed || !trimmed.startsWith('data:')) continue;
+                    
+                    const data = trimmed.slice(5).trim();
+                    if (data === '[DONE]') {
+                        onChunk('', true);
+                        continue;
+                    }
+
+                    try {
+                        const parsed = JSON.parse(data);
+                        const content = parsed.choices?.[0]?.delta?.content;
+                        if (content) {
+                            fullContent += content;
+                            onChunk(content, false);
+                        }
+                    } catch {
+                        // Skip malformed JSON chunks
+                    }
+                }
+            }
+
+            return fullContent;
+        } catch (error) {
+            console.error('OpenRouter streaming request failed:', error);
             throw error;
         }
     }

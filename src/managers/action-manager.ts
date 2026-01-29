@@ -494,19 +494,173 @@ export class ActionManager {
     private async runLLM(action: AIAction, content: string, sourceFile: TFile | null, sourceFiles: TFile[] = [], start?: moment.Moment, end?: moment.Moment, contextInfo?: string) {
         new Notice(`Running AI Action: ${action.name}...`);
 
-        try {
-            const result = await this.llmManager.complete([
-                { role: 'system', content: action.systemPrompt },
-                { role: 'user', content: content }
-            ]);
+        const messages = [
+            { role: 'system' as const, content: action.systemPrompt },
+            { role: 'user' as const, content: content }
+        ];
 
-            await this.handleOutput(action, result, sourceFile, sourceFiles, start, end, contextInfo);
-            new Notice('AI Action completed!');
+        try {
+            // Use streaming for new-note output mode
+            if (action.outputMode === 'new-note' && this.llmManager.supportsStreaming()) {
+                await this.runStreamingLLM(action, messages, sourceFile, sourceFiles, start, end, contextInfo);
+            } else {
+                const result = await this.llmManager.complete(messages);
+                await this.handleOutput(action, result, sourceFile, sourceFiles, start, end, contextInfo);
+                new Notice('AI Action completed!');
+            }
         } catch (error) {
             console.error('AI Action failed:', error);
             const message = error instanceof Error ? error.message : String(error);
             new Notice(`AI Action failed: ${message}`);
         }
+    }
+
+    private async runStreamingLLM(
+        action: AIAction,
+        messages: Array<{ role: 'system' | 'user' | 'assistant'; content: string }>,
+        sourceFile: TFile | null,
+        sourceFiles: TFile[] = [],
+        start?: moment.Moment,
+        end?: moment.Moment,
+        contextInfo?: string
+    ) {
+        // Create the note first with placeholder content
+        const { file: newFile, contentPrefix } = await this.createStreamingNote(
+            action, sourceFile, sourceFiles, start, end, contextInfo
+        );
+
+        // Open the note immediately
+        const leaf = this.app.workspace.getLeaf('split', 'vertical');
+        await leaf.openFile(newFile);
+
+        let fullContent = '';
+        let lastUpdateTime = 0;
+        const updateInterval = 100; // Update file every 100ms max
+
+        const updateFile = async (final: boolean = false) => {
+            const now = Date.now();
+            if (!final && now - lastUpdateTime < updateInterval) return;
+            lastUpdateTime = now;
+
+            // Parse topic from accumulated content
+            let topic = '';
+            let cleanContent = fullContent.trim();
+            const lines = cleanContent.split('\n');
+            
+            for (let i = 0; i < Math.min(lines.length, 10); i++) {
+                const line = lines[i].trim();
+                const match = line.match(/^Topic:\s*(.*)/i);
+                if (match) {
+                    topic = match[1].trim().replace(/^[\[【"']+|[\]】"']+$/g, '').trim();
+                    lines.splice(i, 1);
+                    cleanContent = lines.join('\n').trim();
+                    break;
+                }
+            }
+
+            // Rebuild frontmatter with topic if found
+            let finalContent = contentPrefix;
+            if (topic) {
+                // Insert topic into frontmatter
+                finalContent = finalContent.replace('---\n\n', `topic: ${topic}\n---\n\n`);
+            }
+            finalContent += cleanContent;
+
+            // Add references if final
+            if (final && sourceFiles.length > 0) {
+                finalContent += `\n\n## References\n`;
+                for (const file of sourceFiles) {
+                    finalContent += `- [[${file.path}|${file.basename}]]\n`;
+                }
+            }
+
+            await this.app.vault.modify(newFile, finalContent);
+        };
+
+        try {
+            await this.llmManager.stream(messages, async (chunk, done) => {
+                if (chunk) {
+                    fullContent += chunk;
+                    await updateFile(false);
+                }
+                if (done) {
+                    await updateFile(true);
+                }
+            });
+
+            // Insert backlink to source note
+            if (sourceFile) {
+                const leaves = this.app.workspace.getLeavesOfType('markdown');
+                const sourceLeaf = leaves.find(l => (l.view as MarkdownView).file === sourceFile);
+                if (sourceLeaf) {
+                    const editor = (sourceLeaf.view as MarkdownView).editor;
+                    const linkText = `\n\n[[${newFile.basename}|${action.name} Output]]\n`;
+                    const lineCount = editor.lineCount();
+                    editor.replaceRange(linkText, { line: lineCount, ch: 0 });
+                }
+            }
+
+            new Notice('AI Action completed!');
+        } catch (error) {
+            // On error, keep what we have
+            await updateFile(true);
+            throw error;
+        }
+    }
+
+    private async createStreamingNote(
+        action: AIAction,
+        sourceFile: TFile | null,
+        sourceFiles: TFile[] = [],
+        start?: moment.Moment,
+        end?: moment.Moment,
+        contextInfo?: string
+    ): Promise<{ file: TFile; contentPrefix: string }> {
+        const folder = this.settings.aiActionNoteFolder || '思维涌现';
+        
+        if (folder !== '/') {
+            const folderExists = await this.app.vault.adapter.exists(folder);
+            if (!folderExists) {
+                await this.app.vault.createFolder(folder);
+            }
+        }
+
+        const timestamp = moment().format('YYYYMMDD-HHmmss');
+        let filenameBase = action.name;
+        
+        if (start && end) {
+            filenameBase += `-${start.format('YYYYMMDD')}-${end.format('YYYYMMDD')}`;
+        } else if (contextInfo) {
+            const sanitizedContext = contextInfo.replace(/[^a-zA-Z0-9\u4e00-\u9fa5]/g, '-').substring(0, 20);
+            filenameBase += `-${sanitizedContext}`;
+        } else if (sourceFile) {
+            filenameBase += `-${sourceFile.basename}`;
+        }
+        
+        const filename = `${filenameBase}-${timestamp}.md`;
+        const path = folder === '/' ? filename : `${folder}/${filename}`;
+
+        // Build content prefix (frontmatter + source info)
+        let contentPrefix = `---\ntags:\n  - AI涌现/${action.name}\nmodel: ${this.getActiveModelName()}\n---\n\n`;
+
+        if (sourceFile) {
+            contentPrefix += `> [!info] Source: [[${sourceFile.path}|${sourceFile.basename}]]\n\n`;
+            if (contextInfo === "Selected Text") {
+                contentPrefix += `> [!info] Scope: Selected Text\n\n`;
+            }
+        } else if (sourceFiles.length > 0) {
+            if (start && end) {
+                contentPrefix += `> [!info] Analysis of ${sourceFiles.length} notes from ${start.format('YYYY-MM-DD')} to ${end.format('YYYY-MM-DD')}\n\n`;
+            } else if (contextInfo) {
+                contentPrefix += `> [!info] Analysis of ${sourceFiles.length} notes. Source: ${contextInfo}\n\n`;
+            }
+        }
+
+        // Add streaming indicator
+        contentPrefix += `_Generating..._\n\n`;
+
+        const newFile = await this.app.vault.create(path, contentPrefix);
+        return { file: newFile, contentPrefix: contentPrefix.replace('_Generating..._\n\n', '') };
     }
 
     private async handleOutput(action: AIAction, text: string, sourceFile: TFile | null, sourceFiles: TFile[] = [], start?: moment.Moment, end?: moment.Moment, contextInfo?: string) {
