@@ -175,21 +175,10 @@ export class LLMSettingsTab {
                     .inputEl.type = 'password');
 
             new Setting(containerEl)
-                .setName('Group ID')
-                .setDesc('Minimax Group ID')
-                .addText(text => text
-                    .setPlaceholder('Enter your Group ID')
-                    .setValue(this.plugin.settings.minimaxGroupId)
-                    .onChange(async (value) => {
-                        this.plugin.settings.minimaxGroupId = value.trim();
-                        await this.plugin.saveSettings();
-                    }));
-
-            new Setting(containerEl)
                 .setName('Model')
-                .setDesc('Minimax model ID')
+                .setDesc('Minimax model ID (MiniMax-M2.1, MiniMax-M2.1-lightning, MiniMax-M2)')
                 .addText(text => text
-                    .setPlaceholder('abab6.5s-chat')
+                    .setPlaceholder('MiniMax-M2.1')
                     .setValue(this.plugin.settings.minimaxModel)
                     .onChange(async (value) => {
                         this.plugin.settings.minimaxModel = value.trim();

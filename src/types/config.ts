@@ -66,7 +66,6 @@ export interface PluginSettings {
     zhipuLLMModel: string;
 
     minimaxApiKey: string;
-    minimaxGroupId: string;
     minimaxModel: string;
 
     deepseekApiKey: string;
@@ -163,7 +162,6 @@ export const DEFAULT_SETTINGS: PluginSettings = {
     zhipuLLMModel: 'glm-4-flash',
 
     minimaxApiKey: '',
-    minimaxGroupId: '',
     minimaxModel: 'MiniMax-M2.1',
 
     deepseekApiKey: '',
