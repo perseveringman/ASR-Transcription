@@ -1,5 +1,6 @@
 import { App, TFile, moment } from 'obsidian';
 import { PluginSettings } from '../types/config';
+import { TranscriptionResult, TranscriptionUtterance } from '../types/transcription';
 
 export class TranscriptionNoteService {
     constructor(private app: App, private settings: PluginSettings) {}
@@ -10,8 +11,18 @@ export class TranscriptionNoteService {
 
     /**
      * Create a new note with transcription content
+     * @param result - Full transcription result with optional utterances
+     * @param audioFile - The audio file being transcribed
+     * @param aiText - Optional AI polished text
      */
-    public async createTranscriptionNote(text: string, audioFile: TFile, aiText?: string): Promise<TFile> {
+    public async createTranscriptionNote(
+        result: TranscriptionResult | string,
+        audioFile: TFile,
+        aiText?: string
+    ): Promise<TFile> {
+        // Support both string and TranscriptionResult for backward compatibility
+        const text = typeof result === 'string' ? result : result.text;
+        const utterances = typeof result === 'string' ? undefined : result.utterances;
         const folder = this.settings.voiceNoteFolder || '/';
         const timestamp = moment().format('YYYYMMDD-HHmmss');
         const filename = `Transcription-${timestamp}.md`;
@@ -38,28 +49,69 @@ export class TranscriptionNoteService {
             
             if (templateFile instanceof TFile) {
                 const templateContent = await this.app.vault.read(templateFile);
-                content = this.applyTemplate(templateContent, text, audioFile, aiText);
+                content = this.applyTemplate(templateContent, text, audioFile, aiText, utterances);
             } else {
                 // Template not found, fallback to formatted text
                 console.warn(`[ASR Plugin] Template file not found at path: ${templatePath}`);
-                content = this.formatTranscriptionText(text, audioFile, aiText);
+                content = this.formatTranscriptionText(text, audioFile, aiText, utterances);
             }
         } else {
-            content = this.formatTranscriptionText(text, audioFile, aiText);
+            content = this.formatTranscriptionText(text, audioFile, aiText, utterances);
         }
 
         return await this.app.vault.create(path, content);
     }
 
     /**
+     * Format milliseconds to MM:SS or HH:MM:SS format
+     */
+    private formatTime(ms: number): string {
+        const totalSeconds = Math.floor(ms / 1000);
+        const hours = Math.floor(totalSeconds / 3600);
+        const minutes = Math.floor((totalSeconds % 3600) / 60);
+        const seconds = totalSeconds % 60;
+
+        if (hours > 0) {
+            return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+        }
+        return `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+    }
+
+    /**
+     * Format utterances with timestamps and speaker labels
+     */
+    private formatUtterances(utterances: TranscriptionUtterance[]): string {
+        const lines: string[] = [];
+        
+        for (const u of utterances) {
+            const timeStr = `[${this.formatTime(u.startTime)}]`;
+            const speakerStr = u.speakerId !== undefined ? `**Speaker ${u.speakerId + 1}**: ` : '';
+            lines.push(`${timeStr} ${speakerStr}${u.text}`);
+        }
+        
+        return lines.join('\n\n');
+    }
+
+    /**
      * Format transcription text with audio link and optional timestamp/separator
      */
-    private formatTranscriptionText(text: string, audioFile?: TFile, aiText?: string): string {
-        let result = text.trim();
+    private formatTranscriptionText(
+        text: string,
+        audioFile?: TFile,
+        aiText?: string,
+        utterances?: TranscriptionUtterance[]
+    ): string {
+        let result: string;
 
-        if (this.settings.addTimestamp) {
-            const timestamp = moment().format('YYYY-MM-DD HH:mm:ss');
-            result = `[${timestamp}] ${result}`;
+        // Use formatted utterances if available, otherwise use plain text
+        if (utterances && utterances.length > 0) {
+            result = this.formatUtterances(utterances);
+        } else {
+            result = text.trim();
+            if (this.settings.addTimestamp) {
+                const timestamp = moment().format('YYYY-MM-DD HH:mm:ss');
+                result = `[${timestamp}] ${result}`;
+            }
         }
         
         if (aiText) {
@@ -67,7 +119,7 @@ export class TranscriptionNoteService {
         }
 
         if (audioFile) {
-            result = `![[${audioFile.path}]]\n${result}`;
+            result = `![[${audioFile.path}]]\n\n${result}`;
         }
 
         if (this.settings.addSeparator) {
@@ -82,8 +134,20 @@ export class TranscriptionNoteService {
     /**
      * Apply template variables to template content
      */
-    private applyTemplate(template: string, transcription: string, audioFile?: TFile, aiText?: string): string {
+    private applyTemplate(
+        template: string,
+        transcription: string,
+        audioFile?: TFile,
+        aiText?: string,
+        utterances?: TranscriptionUtterance[]
+    ): string {
         const now = moment();
+        
+        // Format utterances if available
+        const formattedUtterances = utterances && utterances.length > 0
+            ? this.formatUtterances(utterances)
+            : transcription;
+        
         const vars: Record<string, string> = {
             '{{date}}': now.format('YYYY-MM-DD'),
             '{{time}}': now.format('HH:mm:ss'),
@@ -91,6 +155,8 @@ export class TranscriptionNoteService {
             '{{transcription}}': transcription,
             '{{content}}': transcription,
             '{{text}}': transcription,
+            '{{utterances}}': formattedUtterances,
+            '{{transcript_with_timestamps}}': formattedUtterances,
             '{{audio}}': audioFile ? `![[${audioFile.path}]]` : '',
             '{{audio_link}}': audioFile ? `![[${audioFile.path}]]` : '',
             '{{aiText}}': aiText || ''

@@ -26,6 +26,10 @@ export interface PluginSettings {
     volcengineAppId: string;
     volcengineAccessToken: string;
     
+    // Volcengine Enhanced Features
+    enableSpeakerDiarization: boolean;
+    enableTimestamps: boolean;
+    
     // Local Whisper Settings
     whisperServerUrl: string;
     whisperModel: string;
@@ -118,6 +122,10 @@ export const DEFAULT_SETTINGS: PluginSettings = {
     zhipuApiKey: '',
     volcengineAppId: '',
     volcengineAccessToken: '',
+    
+    // Volcengine Enhanced Features Defaults
+    enableSpeakerDiarization: false,
+    enableTimestamps: false,
     
     // Local Whisper Defaults
     whisperServerUrl: 'http://localhost:9000',

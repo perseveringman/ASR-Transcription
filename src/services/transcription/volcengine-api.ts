@@ -1,7 +1,7 @@
 import { requestUrl } from 'obsidian';
-import { TranscriptionService, TranscriptionResult, TranscriptionError, TranscriptionErrorType, TranscriptionConstraints } from '../../types/transcription';
+import { TranscriptionService, TranscriptionResult, TranscriptionError, TranscriptionErrorType, TranscriptionConstraints, TranscriptionUtterance } from '../../types/transcription';
 import { PluginSettings } from '../../types/config';
-import { VolcengineFlashResponse } from '../../types/volcengine';
+import { VolcengineFlashResponse, VolcengineUtterance } from '../../types/volcengine';
 
 export class VolcengineTranscriptionService implements TranscriptionService {
     name = 'volcengine';
@@ -21,18 +21,32 @@ export class VolcengineTranscriptionService implements TranscriptionService {
         const base64Data = await this.blobToBase64(audio);
         const requestId = this.generateUUID();
 
-        // Standard Edition (Async)
+        // Build request config with optional enhanced features
+        const requestConfig: Record<string, unknown> = {
+            model_name: 'bigmodel',
+            enable_itn: true,
+            enable_punc: true
+        };
+
+        // Enable speaker diarization if configured
+        if (this.settings.enableSpeakerDiarization) {
+            requestConfig.enable_speaker_info = true;
+        }
+
+        // Enable timestamps/utterances if configured
+        if (this.settings.enableTimestamps || this.settings.enableSpeakerDiarization) {
+            requestConfig.show_utterances = true;
+        }
+
         const body = {
             user: {
                 uid: this.settings.volcengineAppId
             },
             audio: {
                 format: this.getAudioFormat(audio),
-                data: base64Data // Note: Doc says 'url' is required, but we'll try 'data' as in Flash Edition
+                data: base64Data
             },
-            request: {
-                model_name: 'bigmodel'
-            }
+            request: requestConfig
         };
 
         // 1. Submit task
@@ -40,6 +54,24 @@ export class VolcengineTranscriptionService implements TranscriptionService {
 
         // 2. Poll for result
         return this.pollForResult(requestId);
+    }
+
+    /**
+     * Convert Volcengine utterances to our standard format
+     */
+    private convertUtterances(volcUtterances: VolcengineUtterance[]): TranscriptionUtterance[] {
+        return volcUtterances.map(u => ({
+            text: u.text,
+            startTime: u.start_time,
+            endTime: u.end_time,
+            speakerId: u.speaker_id,
+            words: u.words?.map(w => ({
+                text: w.text,
+                startTime: w.start_time,
+                endTime: w.end_time,
+                confidence: w.confidence
+            }))
+        }));
     }
 
     private async submitTask(body: Record<string, unknown>, requestId: string, attempt = 0): Promise<void> {
@@ -108,12 +140,20 @@ export class VolcengineTranscriptionService implements TranscriptionService {
 
                 if (statusCode === '20000000') {
                     const data: VolcengineFlashResponse = (typeof response.json === 'object' ? response.json : JSON.parse(response.text)) as VolcengineFlashResponse;
-                    return {
+                    
+                    const result: TranscriptionResult = {
                         text: data.result.text,
                         requestId: requestId,
                         model: 'doubao-asr-standard',
                         duration: data.audio_info?.duration
                     };
+
+                    // Include utterances if available
+                    if (data.result.utterances && data.result.utterances.length > 0) {
+                        result.utterances = this.convertUtterances(data.result.utterances);
+                    }
+
+                    return result;
                 }
 
                 // 20000001: Processing, 20000002: In queue

@@ -20,11 +20,28 @@ export class TranscriptionError extends Error {
     }
 }
 
+export interface TranscriptionWord {
+    text: string;
+    startTime: number; // milliseconds
+    endTime: number;   // milliseconds
+    confidence?: number;
+}
+
+export interface TranscriptionUtterance {
+    text: string;
+    startTime: number; // milliseconds
+    endTime: number;   // milliseconds
+    speakerId?: number;
+    words?: TranscriptionWord[];
+}
+
 export interface TranscriptionResult {
     text: string;
     requestId: string;
     model: string;
     duration?: number;
+    /** Detailed utterances with timestamps and optional speaker info */
+    utterances?: TranscriptionUtterance[];
 }
 
 export interface TranscriptionOptions {

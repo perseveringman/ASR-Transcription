@@ -61,6 +61,27 @@ export class TranscriptionSettingsTab {
                         await this.plugin.saveSettings();
                     })
                     .inputEl.type = 'password');
+
+            // Enhanced features for Volcengine
+            new Setting(this.containerEl)
+                .setName('Speaker diarization')
+                .setDesc('Identify and label different speakers (up to 10 speakers)')
+                .addToggle(toggle => toggle
+                    .setValue(this.plugin.settings.enableSpeakerDiarization)
+                    .onChange(async (value) => {
+                        this.plugin.settings.enableSpeakerDiarization = value;
+                        await this.plugin.saveSettings();
+                    }));
+
+            new Setting(this.containerEl)
+                .setName('Timestamps')
+                .setDesc('Include timestamps for each sentence/utterance')
+                .addToggle(toggle => toggle
+                    .setValue(this.plugin.settings.enableTimestamps)
+                    .onChange(async (value) => {
+                        this.plugin.settings.enableTimestamps = value;
+                        await this.plugin.saveSettings();
+                    }));
         }
 
         if (this.plugin.settings.transcriptionProvider === TranscriptionProvider.LOCAL_WHISPER) {

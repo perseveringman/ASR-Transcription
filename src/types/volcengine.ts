@@ -1,20 +1,31 @@
+export interface VolcengineUtterance {
+    text: string;
+    start_time: number;
+    end_time: number;
+    speaker_id?: number;
+    channel_id?: number;
+    words?: Array<{
+        text: string;
+        start_time: number;
+        end_time: number;
+        confidence?: number;
+        blank_duration?: number;
+    }>;
+    additions?: {
+        speech_rate?: number;
+        volume?: number;
+        emotion?: string;
+        gender?: string;
+    };
+}
+
 export interface VolcengineFlashResponse {
     audio_info?: {
         duration: number;
     };
     result: {
         text: string;
-        utterances?: Array<{
-            text: string;
-            start_time: number;
-            end_time: number;
-            words?: Array<{
-                text: string;
-                start_time: number;
-                end_time: number;
-                confidence: number;
-            }>;
-        }>;
+        utterances?: VolcengineUtterance[];
     };
 }
 
