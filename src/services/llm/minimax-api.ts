@@ -91,6 +91,8 @@ export class MinimaxLLMService implements LLMService {
             throw new Error('Minimax API key is not configured');
         }
 
+        console.log('[Minimax] Starting streaming request...');
+
         try {
             const response = await fetch(this.baseUrl, {
                 method: 'POST',
@@ -98,8 +100,11 @@ export class MinimaxLLMService implements LLMService {
                 body: JSON.stringify(this.buildBody(messages, true))
             });
 
+            console.log('[Minimax] Response status:', response.status);
+
             if (!response.ok) {
                 const errorText = await response.text();
+                console.error('[Minimax] Error response:', errorText);
                 let errorMessage = `Status ${response.status}`;
                 try {
                     const errorBody = JSON.parse(errorText);
@@ -114,18 +119,21 @@ export class MinimaxLLMService implements LLMService {
 
             const reader = response.body?.getReader();
             if (!reader) {
+                console.error('[Minimax] Response body is not readable');
                 throw new Error('Response body is not readable');
             }
+
+            console.log('[Minimax] Got reader, starting to read chunks...');
 
             const decoder = new TextDecoder();
             let fullContent = '';
             let buffer = '';
-            let inThinkBlock = false;
 
             while (true) {
                 const { done, value } = await reader.read();
                 
                 if (done) {
+                    console.log('[Minimax] Stream done, total length:', fullContent.length);
                     onChunk('', true);
                     break;
                 }
@@ -145,38 +153,20 @@ export class MinimaxLLMService implements LLMService {
                         const parsed = JSON.parse(data);
                         const content = parsed.choices?.[0]?.delta?.content;
                         if (content) {
-                            // Filter out <think> blocks from streaming output
-                            let filteredContent = content;
-                            
-                            // Check for think block start
-                            if (filteredContent.includes('<think>')) {
-                                inThinkBlock = true;
-                                filteredContent = filteredContent.replace(/<think>[\s\S]*/g, '');
-                            }
-                            
-                            // Check for think block end
-                            if (inThinkBlock && content.includes('</think>')) {
-                                inThinkBlock = false;
-                                filteredContent = content.replace(/[\s\S]*<\/think>/g, '');
-                            }
-                            
-                            // Skip content inside think block
-                            if (inThinkBlock) {
-                                continue;
-                            }
-                            
-                            if (filteredContent) {
-                                fullContent += filteredContent;
-                                onChunk(filteredContent, false);
-                            }
+                            fullContent += content;
+                            // Stream content directly, let caller handle display
+                            // The <think> tags will be visible during streaming
+                            // but final content is filtered in extractContent
+                            onChunk(content, false);
                         }
-                    } catch {
-                        // Skip malformed JSON
+                    } catch (e) {
+                        console.warn('[Minimax] Failed to parse chunk:', data, e);
                     }
                 }
             }
 
-            return fullContent;
+            // Return content with <think> blocks stripped
+            return this.extractContent(fullContent);
         } catch (error) {
             console.error('Minimax streaming request failed:', error);
             throw error;
