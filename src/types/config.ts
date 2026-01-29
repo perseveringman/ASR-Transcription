@@ -164,7 +164,7 @@ export const DEFAULT_SETTINGS: PluginSettings = {
 
     minimaxApiKey: '',
     minimaxGroupId: '',
-    minimaxModel: 'abab6.5s-chat',
+    minimaxModel: 'MiniMax-M2.1',
 
     deepseekApiKey: '',
     deepseekModel: 'deepseek-chat',

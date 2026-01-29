@@ -20,7 +20,7 @@ export class MinimaxLLMService implements LLMService {
 
     private buildBody(messages: LLMMessage[], stream = false): Record<string, unknown> {
         const body: Record<string, unknown> = {
-            model: this.settings.minimaxModel || 'abab6.5s-chat',
+            model: this.settings.minimaxModel || 'MiniMax-M2.1',
             messages: messages,
             temperature: 0.7
         };
