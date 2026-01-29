@@ -6,7 +6,8 @@ export enum InsertPosition {
 
 export enum TranscriptionProvider {
     ZHIPU = 'zhipu',
-    VOLCENGINE = 'volcengine'
+    VOLCENGINE = 'volcengine',
+    LOCAL_WHISPER = 'local-whisper'
 }
 
 export enum LLMProvider {
@@ -24,6 +25,11 @@ export interface PluginSettings {
     zhipuApiKey: string; // For ASR
     volcengineAppId: string;
     volcengineAccessToken: string;
+    
+    // Local Whisper Settings
+    whisperServerUrl: string;
+    whisperModel: string;
+    whisperLanguage: string;
     insertPosition: InsertPosition;
     addTimestamp: boolean;
     addSeparator: boolean;
@@ -113,6 +119,12 @@ export const DEFAULT_SETTINGS: PluginSettings = {
     zhipuApiKey: '',
     volcengineAppId: '',
     volcengineAccessToken: '',
+    
+    // Local Whisper Defaults
+    whisperServerUrl: 'http://localhost:9000',
+    whisperModel: 'base',
+    whisperLanguage: 'auto',
+    
     insertPosition: InsertPosition.CURSOR,
     addTimestamp: true,
     addSeparator: true,
