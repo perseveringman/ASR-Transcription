@@ -5,6 +5,7 @@ import { AudioRecorder } from './services/audio-recorder';
 import { RecordingModal } from './ui/recording-view';
 import { TextInserter } from './services/text-inserter';
 import { VaultUtils } from './utils/vault-utils';
+import { beautifyMarkdown } from './utils/markdown-beautifier';
 import { AudioSelectionModal } from './ui/audio-selection-modal';
 import { TranscriptionManager } from './managers/transcription-manager';
 import { LLMManager } from './managers/llm-manager';
@@ -125,6 +126,30 @@ export default class ASRPlugin extends Plugin {
             name: 'Analyze URL at cursor',
             editorCallback: async (editor: Editor) => {
                 await this.handleUrlAtCursor(editor);
+            }
+        });
+
+        this.addCommand({
+            id: 'beautify-current-note',
+            name: 'Beautify current note markdown',
+            checkCallback: (checking: boolean) => {
+                const activeView = this.app.workspace.getActiveViewOfType(MarkdownView);
+                if (!activeView) return false;
+
+                if (checking) return true;
+
+                const editor = activeView.editor;
+                const content = editor.getValue();
+
+                if (!content.trim()) {
+                    new Notice('Note is empty.');
+                    return true;
+                }
+
+                const beautified = beautifyMarkdown(content);
+                editor.setValue(beautified);
+                new Notice('Note beautified!');
+                return true;
             }
         });
 
