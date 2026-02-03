@@ -11,6 +11,7 @@
     "importHelpers": true,
     "jsx": "react",
     "strict": true,
+    "skipLibCheck": true,
     "lib": [
       "DOM",
       "ESNext"

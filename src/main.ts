@@ -1,4 +1,4 @@
-import { Plugin, Notice, TFile, TAbstractFile, moment, Menu } from 'obsidian';
+import { Plugin, Notice, TFile, TAbstractFile, moment, Menu, MarkdownView, Editor } from 'obsidian';
 import { DEFAULT_SETTINGS, PluginSettings } from './types/config';
 import { ASRSettingTab } from './ui/settings-tab';
 import { AudioRecorder } from './services/audio-recorder';
@@ -11,6 +11,7 @@ import { LLMManager } from './managers/llm-manager';
 import { ActionManager } from './managers/action-manager';
 import { BatchManager } from './managers/batch-manager';
 import { TranscriptionNoteService } from './services/transcription-note-service';
+import { ArticleReaderManager } from './managers/article-reader-manager';
 import { AISidebarView, VIEW_TYPE_AI_SIDEBAR } from './ui/sidebar/sidebar-view';
 
 export default class ASRPlugin extends Plugin {
@@ -22,6 +23,7 @@ export default class ASRPlugin extends Plugin {
     actionManager!: ActionManager;
     batchManager!: BatchManager;
     noteService!: TranscriptionNoteService;
+    articleReaderManager!: ArticleReaderManager;
 
     async onload() {
         await this.loadSettings();
@@ -33,6 +35,7 @@ export default class ASRPlugin extends Plugin {
         this.noteService = new TranscriptionNoteService(this.app, this.settings);
         this.actionManager = new ActionManager(this.app, this.llmManager, this.settings, this.saveSettings.bind(this));
         this.batchManager = new BatchManager(this.app, this.settings, this.transcriptionManager, this.llmManager, this.noteService);
+        this.articleReaderManager = new ArticleReaderManager(this.app, this.settings, this.llmManager);
 
         this.addSettingTab(new ASRSettingTab(this.app, this));
 
@@ -117,6 +120,31 @@ export default class ASRPlugin extends Plugin {
             }
         });
 
+        this.addCommand({
+            id: 'analyze-url-at-cursor',
+            name: 'Analyze URL at cursor',
+            editorCallback: async (editor: Editor) => {
+                await this.handleUrlAtCursor(editor);
+            }
+        });
+
+        // Register paste event for auto-trigger
+        this.registerEvent(
+            this.app.workspace.on('editor-paste', (evt: ClipboardEvent, editor: Editor) => {
+                if (!this.settings.enableArticleReader || !this.settings.articleReaderAutoTrigger) {
+                    return;
+                }
+                const text = evt.clipboardData?.getData('text/plain');
+                if (text) {
+                    const url = this.articleReaderManager.extractUrl(text);
+                    if (url) {
+                        evt.preventDefault();
+                        void this.handlePastedUrl(editor, text, url);
+                    }
+                }
+            })
+        );
+
         // Register file menu event for right-click transcription on audio files
         this.registerEvent(
             this.app.workspace.on('file-menu', (menu: Menu, file: TAbstractFile) => {
@@ -158,6 +186,52 @@ export default class ASRPlugin extends Plugin {
     private isAudioFile(file: TFile): boolean {
         const audioExtensions = ['mp3', 'wav', 'm4a', 'ogg', 'webm', 'flac', 'aac'];
         return audioExtensions.includes(file.extension.toLowerCase());
+    }
+
+    /**
+     * Handle URL at cursor position - triggered by command
+     */
+    async handleUrlAtCursor(editor: Editor) {
+        if (!this.settings.enableArticleReader) {
+            new Notice('Article reader is disabled. Enable it in settings.');
+            return;
+        }
+
+        const cursor = editor.getCursor();
+        const line = editor.getLine(cursor.line);
+        const url = this.articleReaderManager.extractUrl(line);
+
+        if (!url) {
+            new Notice('No URL found on current line.');
+            return;
+        }
+
+        try {
+            const { link } = await this.articleReaderManager.processUrl(url);
+            // Insert link below the URL line
+            const lineEnd = { line: cursor.line, ch: line.length };
+            editor.replaceRange(`\n${link}`, lineEnd);
+        } catch (err) {
+            // Error already shown by manager
+        }
+    }
+
+    /**
+     * Handle pasted URL - triggered by paste event
+     */
+    async handlePastedUrl(editor: Editor, pastedText: string, url: string) {
+        // First, insert the pasted URL
+        editor.replaceSelection(pastedText);
+        const cursor = editor.getCursor();
+
+        try {
+            const { link } = await this.articleReaderManager.processUrl(url);
+            // Insert link below the pasted URL
+            const lineEnd = { line: cursor.line, ch: editor.getLine(cursor.line).length };
+            editor.replaceRange(`\n${link}`, lineEnd);
+        } catch (err) {
+            // Error already shown by manager
+        }
     }
 
     /**
@@ -274,6 +348,11 @@ export default class ASRPlugin extends Plugin {
         // Update action manager if needed
         if (this.actionManager) {
              this.actionManager.updateSettings(this.settings);
+        }
+        
+        // Update article reader manager
+        if (this.articleReaderManager) {
+            this.articleReaderManager.updateSettings(this.settings);
         }
     }
 }

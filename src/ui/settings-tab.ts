@@ -3,6 +3,7 @@ import ASRPlugin from '../main';
 import { GeneralSettingsTab } from './settings/general-settings';
 import { TranscriptionSettingsTab } from './settings/transcription-settings';
 import { LLMSettingsTab } from './settings/llm-settings';
+import { ArticleReaderSettingsTab } from './settings/article-reader-settings';
 import { PromptEditModal } from './modals/prompt-edit-modal';
 
 export class ASRSettingTab extends PluginSettingTab {
@@ -28,7 +29,10 @@ export class ASRSettingTab extends PluginSettingTab {
         // 3. LLM Settings
         new LLMSettingsTab(containerEl, this.plugin, refresh).display();
 
-        // 4. Features Settings (AI Polishing, etc)
+        // 4. Article Reader Settings
+        new ArticleReaderSettingsTab(containerEl, this.plugin, refresh).display();
+
+        // 5. Features Settings (AI Polishing, etc)
         new Setting(containerEl)
             .setName('Features')
             .setHeading();

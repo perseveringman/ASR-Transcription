@@ -258,6 +258,14 @@ export class ActionManager {
                                 systemPrompt: this.getPrompt('weekly-review'),
                             },
                             {
+                                id: 'monthly-review',
+                                name: '月评',
+                                description: '全面月度回顾：数据洞察、趋势对比、反思提问',
+                                icon: 'calendar-range',
+                                outputMode: 'new-note',
+                                systemPrompt: this.getPrompt('monthly-review'),
+                            },
+                            {
                                 id: 'project-aar',
                                 name: '项目复盘',
                                 description: '针对项目进行 AAR 复盘分析',

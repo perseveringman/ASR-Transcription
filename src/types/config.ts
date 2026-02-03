@@ -1,3 +1,5 @@
+import { ArticleFetcherType } from './article';
+
 export enum InsertPosition {
     CURSOR = 'cursor',
     DOCUMENT_END = 'document-end',
@@ -81,6 +83,14 @@ export interface PluginSettings {
 
     actionUsageCounts: Record<string, number>;
     customPrompts: Record<string, string>;
+
+    // Article Reader Settings
+    enableArticleReader: boolean;
+    articleReaderAutoTrigger: boolean;
+    articleNoteFolder: string;
+    articleFetcherType: ArticleFetcherType;
+    articleReaderSystemPrompt: string;
+    jinaApiKey: string;
 }
 
 export interface StylePreset {
@@ -176,5 +186,13 @@ export const DEFAULT_SETTINGS: PluginSettings = {
     deepseekModel: 'deepseek-chat',
 
     actionUsageCounts: {},
-    customPrompts: {}
+    customPrompts: {},
+
+    // Article Reader Defaults
+    enableArticleReader: true,
+    articleReaderAutoTrigger: false,
+    articleNoteFolder: 'Articles',
+    articleFetcherType: ArticleFetcherType.FETCH,
+    articleReaderSystemPrompt: '',
+    jinaApiKey: ''
 };

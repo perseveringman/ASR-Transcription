@@ -71,7 +71,10 @@ export class OpenAICompatibleLLMService implements LLMService {
                 throw new Error(`No completion choices returned from ${this.nameStr}`);
             }
 
-            return data.choices[0].message.content;
+            let content = data.choices[0].message.content || '';
+            // Filter out <think>...</think> blocks (used by some reasoning models)
+            content = content.replace(/<think>[\s\S]*?<\/think>/g, '').trim();
+            return content;
         } catch (error) {
             console.error(`${this.nameStr} API request failed:`, error);
             throw error;
@@ -128,6 +131,9 @@ export class OpenAICompatibleLLMService implements LLMService {
             const decoder = new TextDecoder();
             let fullContent = '';
             let buffer = '';
+            // Track if we're inside a <think> block (for models that embed thinking in content)
+            let insideThinkTag = false;
+            let thinkBuffer = '';
 
             while (true) {
                 const { done, value } = await reader.read();
@@ -153,10 +159,64 @@ export class OpenAICompatibleLLMService implements LLMService {
 
                     try {
                         const parsed = JSON.parse(data);
-                        const content = parsed.choices?.[0]?.delta?.content;
+                        const delta = parsed.choices?.[0]?.delta;
+                        
+                        // Skip reasoning_content (DeepSeek reasoner thinking process)
+                        // Only process the actual content field
+                        const content = delta?.content;
                         if (content) {
-                            fullContent += content;
-                            onChunk(content, false);
+                            // Filter out <think>...</think> blocks that some models embed in content
+                            let processedContent = content;
+                            
+                            // Handle streaming <think> tags
+                            if (insideThinkTag) {
+                                // We're inside a think block, look for closing tag
+                                const closeIdx = processedContent.indexOf('</think>');
+                                if (closeIdx !== -1) {
+                                    // Found closing tag, skip everything up to and including it
+                                    processedContent = processedContent.substring(closeIdx + 8);
+                                    insideThinkTag = false;
+                                    thinkBuffer = '';
+                                } else {
+                                    // Still inside think block, skip entire chunk
+                                    thinkBuffer += processedContent;
+                                    continue;
+                                }
+                            }
+                            
+                            // Check for opening <think> tag
+                            const openIdx = processedContent.indexOf('<think>');
+                            if (openIdx !== -1) {
+                                // Output content before <think>
+                                const beforeThink = processedContent.substring(0, openIdx);
+                                if (beforeThink) {
+                                    fullContent += beforeThink;
+                                    onChunk(beforeThink, false);
+                                }
+                                
+                                // Check if closing tag is in same chunk
+                                const afterOpen = processedContent.substring(openIdx + 7);
+                                const closeIdx = afterOpen.indexOf('</think>');
+                                if (closeIdx !== -1) {
+                                    // Complete think block in one chunk, output content after
+                                    const afterThink = afterOpen.substring(closeIdx + 8);
+                                    if (afterThink) {
+                                        fullContent += afterThink;
+                                        onChunk(afterThink, false);
+                                    }
+                                } else {
+                                    // Think block spans multiple chunks
+                                    insideThinkTag = true;
+                                    thinkBuffer = afterOpen;
+                                }
+                                continue;
+                            }
+                            
+                            // No think tags, output normally
+                            if (processedContent) {
+                                fullContent += processedContent;
+                                onChunk(processedContent, false);
+                            }
                         }
                     } catch {
                         // Skip malformed JSON chunks
