@@ -97,6 +97,11 @@ export interface PluginSettings {
     articleFetcherType: ArticleFetcherType;
     articleReaderSystemPrompt: string;
     jinaApiKey: string;
+
+    // Settings UI State
+    onboardingCompleted: boolean;
+    settingsViewMode: 'wizard' | 'tabs';
+    lastActiveTab: 'quickstart' | 'asr' | 'llm' | 'ai-advanced' | 'general-advanced';
 }
 
 export interface StylePreset {
@@ -206,5 +211,10 @@ export const DEFAULT_SETTINGS: PluginSettings = {
     articleNoteFolder: 'Articles',
     articleFetcherType: ArticleFetcherType.FETCH,
     articleReaderSystemPrompt: '',
-    jinaApiKey: ''
+    jinaApiKey: '',
+
+    // Settings UI State Defaults
+    onboardingCompleted: false,
+    settingsViewMode: 'wizard',
+    lastActiveTab: 'quickstart'
 };

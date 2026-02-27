@@ -16,6 +16,7 @@ import { TranscriptionNoteService } from './services/transcription-note-service'
 import { DailyNoteLinkService } from './services/daily-note-link-service';
 import { ArticleReaderManager } from './managers/article-reader-manager';
 import { AISidebarView, VIEW_TYPE_AI_SIDEBAR } from './ui/sidebar/sidebar-view';
+import { hasConfiguredSetup } from './ui/settings/settings-state';
 
 export default class ASRPlugin extends Plugin {
     settings!: PluginSettings;
@@ -399,7 +400,33 @@ export default class ASRPlugin extends Plugin {
     }
 
     async loadSettings() {
-        this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData());
+        const loadedData = await this.loadData();
+        this.settings = Object.assign({}, DEFAULT_SETTINGS, loadedData);
+
+        const hasUiState = !!loadedData
+            && typeof loadedData === 'object'
+            && (
+                'onboardingCompleted' in loadedData
+                || 'settingsViewMode' in loadedData
+                || 'lastActiveTab' in loadedData
+            );
+
+        if (!hasUiState) {
+            const hasConfigured = hasConfiguredSetup(this.settings);
+
+            this.settings.onboardingCompleted = hasConfigured;
+            this.settings.settingsViewMode = hasConfigured ? 'tabs' : 'wizard';
+            this.settings.lastActiveTab = 'quickstart';
+        }
+
+        if (this.settings.settingsViewMode !== 'wizard' && this.settings.settingsViewMode !== 'tabs') {
+            this.settings.settingsViewMode = this.settings.onboardingCompleted ? 'tabs' : 'wizard';
+        }
+
+        const validTabs = new Set(['quickstart', 'asr', 'llm', 'ai-advanced', 'general-advanced']);
+        if (!validTabs.has(this.settings.lastActiveTab)) {
+            this.settings.lastActiveTab = 'quickstart';
+        }
     }
 
     async saveSettings() {

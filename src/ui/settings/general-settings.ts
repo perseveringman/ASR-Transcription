@@ -7,12 +7,12 @@ export class GeneralSettingsTab {
 
     display(): void {
         new Setting(this.containerEl)
-            .setName('General Settings')
+            .setName('通用设置')
             .setHeading();
 
         new Setting(this.containerEl)
-            .setName('Audio save folder')
-            .setDesc('Folder where recorded audio files will be saved')
+            .setName('音频保存文件夹')
+            .setDesc('录音文件保存的文件夹')
             .addText(text => text
                 .setPlaceholder('/')
                 .setValue(this.plugin.settings.audioSaveFolder)
@@ -22,8 +22,8 @@ export class GeneralSettingsTab {
                 }));
 
         new Setting(this.containerEl)
-            .setName('Voice note folder')
-            .setDesc('Folder where new voice notes will be created')
+            .setName('语音笔记文件夹')
+            .setDesc('新建语音笔记所在的文件夹')
             .addText(text => text
                 .setPlaceholder('/')
                 .setValue(this.plugin.settings.voiceNoteFolder)
@@ -33,8 +33,8 @@ export class GeneralSettingsTab {
                 }));
 
         new Setting(this.containerEl)
-            .setName('AI action note folder')
-            .setDesc('Folder where AI generated notes (e.g. from Sidebar) will be created')
+            .setName('AI 操作笔记文件夹')
+            .setDesc('AI 生成笔记（例如来自侧边栏）所在的文件夹')
             .addText(text => text
                 .setPlaceholder('思维涌现')
                 .setValue(this.plugin.settings.aiActionNoteFolder)
@@ -44,8 +44,8 @@ export class GeneralSettingsTab {
                 }));
 
         new Setting(this.containerEl)
-            .setName('Template file path')
-            .setDesc('Path to the template file for new voice notes (e.g., templates/voice-note.md)')
+            .setName('模板文件路径')
+            .setDesc('新语音笔记的模板文件路径（例如：templates/voice-note.md）')
             .addText(text => text
                 .setPlaceholder('templates/voice-note.md')
                 .setValue(this.plugin.settings.templatePath)
@@ -56,12 +56,12 @@ export class GeneralSettingsTab {
 
         // Auto Transcription Settings
         new Setting(this.containerEl)
-            .setName('Auto Transcription')
+            .setName('自动转写设置')
             .setHeading();
 
         new Setting(this.containerEl)
-            .setName('Auto transcribe new audio files')
-            .setDesc('Automatically transcribe audio files in the audio save folder when they are added. Also scans for unprocessed audio on startup.')
+            .setName('自动转写新音频文件')
+            .setDesc('添加音频文件到保存文件夹时自动转写。启动时也会扫描未处理的音频。')
             .addToggle(toggle => toggle
                 .setValue(this.plugin.settings.enableAutoTranscription)
                 .onChange(async (value) => {
@@ -70,8 +70,8 @@ export class GeneralSettingsTab {
                 }));
 
         new Setting(this.containerEl)
-            .setName('Auto link to daily note')
-            .setDesc('Automatically link transcription notes to their corresponding daily notes. Scans for unlinked notes on startup and monitors new ones.')
+            .setName('自动链接到每日笔记')
+            .setDesc('自动将转写笔记链接到对应日期的每日笔记。启动时扫描未链接的笔记并监听新笔记。')
             .addToggle(toggle => toggle
                 .setValue(this.plugin.settings.enableAutoLink)
                 .onChange(async (value) => {
@@ -81,16 +81,16 @@ export class GeneralSettingsTab {
         
         // Insertion Settings
         new Setting(this.containerEl)
-            .setName('Insertion')
+            .setName('插入设置')
             .setHeading();
 
         new Setting(this.containerEl)
-            .setName('Insert position')
-            .setDesc('Where to insert the transcribed text')
+            .setName('插入位置')
+            .setDesc('转写文本插入的位置')
             .addDropdown(dropdown => dropdown
-                .addOption(InsertPosition.CURSOR, 'At cursor')
-                .addOption(InsertPosition.DOCUMENT_END, 'At document end')
-                .addOption(InsertPosition.NEW_NOTE, 'In a new note')
+                .addOption(InsertPosition.CURSOR, '光标处')
+                .addOption(InsertPosition.DOCUMENT_END, '文档末尾')
+                .addOption(InsertPosition.NEW_NOTE, '新建笔记')
                 .setValue(this.plugin.settings.insertPosition)
                 .onChange(async (value) => {
                     this.plugin.settings.insertPosition = value as InsertPosition;
@@ -98,8 +98,8 @@ export class GeneralSettingsTab {
                 }));
 
         new Setting(this.containerEl)
-            .setName('Add timestamp')
-            .setDesc('Prepend a timestamp to the transcribed text')
+            .setName('添加时间戳')
+            .setDesc('在转写文本前添加时间戳')
             .addToggle(toggle => toggle
                 .setValue(this.plugin.settings.addTimestamp)
                 .onChange(async (value) => {
@@ -108,8 +108,8 @@ export class GeneralSettingsTab {
                 }));
 
         new Setting(this.containerEl)
-            .setName('Add separator')
-            .setDesc('Add a separator before the transcribed text')
+            .setName('添加分隔符')
+            .setDesc('在转写文本前添加分隔符')
             .addToggle(toggle => toggle
                 .setValue(this.plugin.settings.addSeparator)
                 .onChange(async (value) => {

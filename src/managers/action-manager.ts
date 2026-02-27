@@ -160,14 +160,6 @@ export class ActionManager {
                                 systemPrompt: this.getPrompt('master-debate'),
                             },
                             {
-                                id: 'poetic-gathering',
-                                name: '诗人雅集',
-                                description: '邀请不同流派诗人重构内容并互评',
-                                icon: 'feather',
-                                outputMode: 'new-note',
-                                systemPrompt: this.getPrompt('poetic-gathering'),
-                            },
-                            {
                                 id: 'mindmap-outline',
                                 name: '思维导图大纲',
                                 description: '将内容转化为逻辑清晰的思维导图大纲',

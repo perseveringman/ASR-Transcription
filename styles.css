@@ -91,3 +91,98 @@
 .asr-source-selector .setting-item-control {
     flex: 0 0 auto;
 }
+
+/* Settings Tabs + Onboarding Wizard */
+.asr-settings-shell {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.asr-settings-tabs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    padding: 6px;
+    border: 1px solid var(--background-modifier-border);
+    border-radius: 8px;
+    background: var(--background-secondary);
+}
+
+.asr-settings-tab-btn {
+    border: 1px solid var(--background-modifier-border);
+    background: var(--background-primary);
+    color: var(--text-normal);
+    border-radius: 6px;
+    padding: 6px 10px;
+    cursor: pointer;
+}
+
+.asr-settings-tab-btn:hover {
+    background: var(--background-modifier-hover);
+}
+
+.asr-settings-tab-btn.is-active {
+    background: var(--interactive-accent);
+    color: var(--text-on-accent);
+    border-color: var(--interactive-accent);
+}
+
+.asr-settings-content {
+    border: 1px solid var(--background-modifier-border);
+    border-radius: 8px;
+    padding: 8px 12px;
+}
+
+.asr-settings-status-card {
+    margin: 8px 0 16px;
+    padding: 10px 12px;
+    border: 1px solid var(--background-modifier-border);
+    border-radius: 8px;
+    background: var(--background-secondary);
+}
+
+.asr-settings-status-title {
+    font-weight: 600;
+    margin-bottom: 6px;
+}
+
+.asr-settings-status-list {
+    margin: 0;
+    padding-left: 18px;
+}
+
+.asr-wizard-errors {
+    color: var(--text-error);
+    font-size: 0.9em;
+    margin: 0 0 8px;
+}
+
+.asr-thinking-category {
+    margin: 8px 0 12px;
+    border: 1px solid var(--background-modifier-border);
+    border-radius: 8px;
+    padding: 6px 10px;
+    background: var(--background-secondary);
+}
+
+.asr-thinking-category-summary {
+    cursor: pointer;
+    font-weight: 600;
+}
+
+.asr-thinking-category-content {
+    margin-top: 8px;
+}
+
+.asr-thinking-subcategory-label {
+    margin-top: 8px;
+    margin-bottom: 4px;
+    color: var(--text-muted);
+    font-weight: 600;
+    font-size: 0.9em;
+}
+
+.asr-thinking-customized-btn {
+    color: var(--text-accent);
+}
