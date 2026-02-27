@@ -10,7 +10,9 @@ import { TranscriptionManager } from './managers/transcription-manager';
 import { LLMManager } from './managers/llm-manager';
 import { ActionManager } from './managers/action-manager';
 import { BatchManager } from './managers/batch-manager';
+import { AutoTranscriptionManager } from './managers/auto-transcription-manager';
 import { TranscriptionNoteService } from './services/transcription-note-service';
+import { DailyNoteLinkService } from './services/daily-note-link-service';
 import { ArticleReaderManager } from './managers/article-reader-manager';
 import { AISidebarView, VIEW_TYPE_AI_SIDEBAR } from './ui/sidebar/sidebar-view';
 
@@ -24,6 +26,8 @@ export default class ASRPlugin extends Plugin {
     batchManager!: BatchManager;
     noteService!: TranscriptionNoteService;
     articleReaderManager!: ArticleReaderManager;
+    autoTranscriptionManager!: AutoTranscriptionManager;
+    dailyNoteLinkService!: DailyNoteLinkService;
 
     async onload() {
         await this.loadSettings();
@@ -33,9 +37,18 @@ export default class ASRPlugin extends Plugin {
         this.transcriptionManager = new TranscriptionManager(this.settings);
         this.llmManager = new LLMManager(this.settings);
         this.noteService = new TranscriptionNoteService(this.app, this.settings);
+        this.dailyNoteLinkService = new DailyNoteLinkService(this.app);
         this.actionManager = new ActionManager(this.app, this.llmManager, this.settings, this.saveSettings.bind(this));
-        this.batchManager = new BatchManager(this.app, this.settings, this.transcriptionManager, this.llmManager, this.noteService);
+        this.batchManager = new BatchManager(this.app, this.settings, this.transcriptionManager, this.llmManager, this.noteService, this.dailyNoteLinkService);
         this.articleReaderManager = new ArticleReaderManager(this.app, this.settings, this.llmManager);
+        this.autoTranscriptionManager = new AutoTranscriptionManager(
+            this.app,
+            this.settings,
+            this.transcriptionManager,
+            this.llmManager,
+            this.noteService,
+            this.dailyNoteLinkService
+        );
 
         this.addSettingTab(new ASRSettingTab(this.app, this));
 
@@ -174,6 +187,9 @@ export default class ASRPlugin extends Plugin {
                 }
             })
         );
+
+        // Start auto transcription monitoring
+        this.autoTranscriptionManager.start();
     }
 
     async activateView() {
@@ -365,6 +381,9 @@ export default class ASRPlugin extends Plugin {
         if (this.recorder) {
             this.recorder.stop();
         }
+        if (this.autoTranscriptionManager) {
+            this.autoTranscriptionManager.stop();
+        }
     }
 
     async loadSettings() {
@@ -387,6 +406,11 @@ export default class ASRPlugin extends Plugin {
         // Update article reader manager
         if (this.articleReaderManager) {
             this.articleReaderManager.updateSettings(this.settings);
+        }
+        
+        // Update auto transcription manager
+        if (this.autoTranscriptionManager) {
+            this.autoTranscriptionManager.updateSettings(this.settings);
         }
     }
 }

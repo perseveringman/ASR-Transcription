@@ -84,6 +84,9 @@ export interface PluginSettings {
     actionUsageCounts: Record<string, number>;
     customPrompts: Record<string, string>;
 
+    // Auto Transcription Settings
+    enableAutoTranscription: boolean;
+
     // Article Reader Settings
     enableArticleReader: boolean;
     articleReaderAutoTrigger: boolean;
@@ -187,6 +190,9 @@ export const DEFAULT_SETTINGS: PluginSettings = {
 
     actionUsageCounts: {},
     customPrompts: {},
+
+    // Auto Transcription Defaults
+    enableAutoTranscription: false,
 
     // Article Reader Defaults
     enableArticleReader: true,

@@ -53,6 +53,21 @@ export class GeneralSettingsTab {
                     this.plugin.settings.templatePath = value;
                     await this.plugin.saveSettings();
                 }));
+
+        // Auto Transcription Settings
+        new Setting(this.containerEl)
+            .setName('Auto Transcription')
+            .setHeading();
+
+        new Setting(this.containerEl)
+            .setName('Auto transcribe new audio files')
+            .setDesc('Automatically transcribe audio files in the audio save folder when they are added. Also scans for unprocessed audio on startup.')
+            .addToggle(toggle => toggle
+                .setValue(this.plugin.settings.enableAutoTranscription)
+                .onChange(async (value) => {
+                    this.plugin.settings.enableAutoTranscription = value;
+                    await this.plugin.saveSettings();
+                }));
         
         // Insertion Settings
         new Setting(this.containerEl)
