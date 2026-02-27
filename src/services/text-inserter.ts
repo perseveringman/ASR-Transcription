@@ -103,9 +103,9 @@ export class TextInserter {
 
     private async createNewNote(text: string, audioFile?: TFile, aiPolishedText?: string) {
         const folder = this.settings.voiceNoteFolder || '/';
-        const timestamp = moment().format('YYYYMMDD-HHmmss');
+        const timestamp = this.getTimestampForFilename(audioFile);
         const filename = `Transcription-${timestamp}.md`;
-        const path = folder === '/' ? filename : `${folder}/${filename}`;
+        const initialPath = folder === '/' ? filename : `${folder}/${filename}`;
 
         // Ensure folder exists
         if (folder !== '/') {
@@ -140,9 +140,35 @@ export class TextInserter {
             content = this.formatText(text, audioFile, aiPolishedText);
         }
         
+        const path = await this.ensureUniquePath(initialPath);
         const file = await this.app.vault.create(path, content);
         const leaf = this.app.workspace.getLeaf(true);
         await leaf.openFile(file);
+    }
+
+    private getTimestampForFilename(audioFile?: TFile): string {
+        const audioCreatedAt = audioFile?.stat?.ctime;
+        if (typeof audioCreatedAt === 'number' && Number.isFinite(audioCreatedAt)) {
+            return moment(audioCreatedAt).format('YYYYMMDD-HHmmss');
+        }
+        return moment().format('YYYYMMDD-HHmmss');
+    }
+
+    private async ensureUniquePath(initialPath: string): Promise<string> {
+        if (!await this.app.vault.adapter.exists(initialPath)) {
+            return initialPath;
+        }
+
+        const basePath = initialPath.replace(/\.md$/, '');
+        let counter = 1;
+        let candidatePath = `${basePath}-${counter}.md`;
+
+        while (await this.app.vault.adapter.exists(candidatePath)) {
+            counter += 1;
+            candidatePath = `${basePath}-${counter}.md`;
+        }
+
+        return candidatePath;
     }
 
     private applyTemplate(template: string, transcription: string, audioFile?: TFile, aiPolishedText?: string): string {

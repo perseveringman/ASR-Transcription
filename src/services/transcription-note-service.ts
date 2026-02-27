@@ -24,9 +24,9 @@ export class TranscriptionNoteService {
         const text = typeof result === 'string' ? result : result.text;
         const utterances = typeof result === 'string' ? undefined : result.utterances;
         const folder = this.settings.voiceNoteFolder || '/';
-        const timestamp = moment().format('YYYYMMDD-HHmmss');
+        const timestamp = this.getTimestampForFilename(audioFile);
         const filename = `Transcription-${timestamp}.md`;
-        const path = folder === '/' ? filename : `${folder}/${filename}`;
+        const initialPath = folder === '/' ? filename : `${folder}/${filename}`;
 
         // Ensure folder exists
         if (folder !== '/') {
@@ -59,7 +59,33 @@ export class TranscriptionNoteService {
             content = this.formatTranscriptionText(text, audioFile, aiText, utterances);
         }
 
+        const path = await this.ensureUniquePath(initialPath);
         return await this.app.vault.create(path, content);
+    }
+
+    private getTimestampForFilename(audioFile?: TFile): string {
+        const audioCreatedAt = audioFile?.stat?.ctime;
+        if (typeof audioCreatedAt === 'number' && Number.isFinite(audioCreatedAt)) {
+            return moment(audioCreatedAt).format('YYYYMMDD-HHmmss');
+        }
+        return moment().format('YYYYMMDD-HHmmss');
+    }
+
+    private async ensureUniquePath(initialPath: string): Promise<string> {
+        if (!await this.app.vault.adapter.exists(initialPath)) {
+            return initialPath;
+        }
+
+        const basePath = initialPath.replace(/\.md$/, '');
+        let counter = 1;
+        let candidatePath = `${basePath}-${counter}.md`;
+
+        while (await this.app.vault.adapter.exists(candidatePath)) {
+            counter += 1;
+            candidatePath = `${basePath}-${counter}.md`;
+        }
+
+        return candidatePath;
     }
 
     /**
