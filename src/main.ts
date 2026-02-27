@@ -128,6 +128,20 @@ export default class ASRPlugin extends Plugin {
             }
         });
 
+        this.addCommand({
+            id: 'beautify-current-note',
+            name: 'Beautify current note formatting',
+            checkCallback: (checking: boolean) => {
+                const activeFile = this.app.workspace.getActiveFile();
+                if (!activeFile || activeFile.extension !== 'md') return false;
+                
+                if (checking) return true;
+
+                void this.handleBeautifyNote(activeFile);
+                return true;
+            }
+        });
+
         // Register paste event for auto-trigger
         this.registerEvent(
             this.app.workspace.on('editor-paste', (evt: ClipboardEvent, editor: Editor) => {
@@ -323,6 +337,26 @@ export default class ASRPlugin extends Plugin {
         } catch (err: unknown) {
             const message = err instanceof Error ? err.message : String(err);
             new Notice(`Transcription of ${file.name} failed: ${message}`);
+            console.error('ASR Plugin error:', err);
+        }
+    }
+
+    /**
+     * Handle beautifying the current note's formatting without changing text content
+     */
+    async handleBeautifyNote(file: TFile) {
+        const notice = new Notice('Beautifying note...', 0);
+        
+        try {
+            const content = await this.app.vault.read(file);
+            const beautified = await this.llmManager.beautifyNote(content);
+            await this.app.vault.modify(file, beautified);
+            notice.hide();
+            new Notice('Note beautified!');
+        } catch (err: unknown) {
+            notice.hide();
+            const message = err instanceof Error ? err.message : String(err);
+            new Notice(`Beautify failed: ${message}`);
             console.error('ASR Plugin error:', err);
         }
     }
