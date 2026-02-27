@@ -87,6 +87,9 @@ export interface PluginSettings {
     // Auto Transcription Settings
     enableAutoTranscription: boolean;
 
+    // Auto Link to Daily Note Settings
+    enableAutoLink: boolean;
+
     // Article Reader Settings
     enableArticleReader: boolean;
     articleReaderAutoTrigger: boolean;
@@ -193,6 +196,9 @@ export const DEFAULT_SETTINGS: PluginSettings = {
 
     // Auto Transcription Defaults
     enableAutoTranscription: false,
+
+    // Auto Link Defaults
+    enableAutoLink: true,
 
     // Article Reader Defaults
     enableArticleReader: true,

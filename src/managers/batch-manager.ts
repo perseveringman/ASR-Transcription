@@ -4,7 +4,6 @@ import { TranscriptionManager } from './transcription-manager';
 import { LLMManager } from './llm-manager';
 import { PluginSettings } from '../types/config';
 import { TranscriptionNoteService } from '../services/transcription-note-service';
-import { DailyNoteLinkService } from '../services/daily-note-link-service';
 
 export class BatchManager {
     constructor(
@@ -12,8 +11,7 @@ export class BatchManager {
         private settings: PluginSettings,
         private transcriptionManager: TranscriptionManager,
         private llmManager: LLMManager,
-        private noteService: TranscriptionNoteService,
-        private dailyNoteLinkService: DailyNoteLinkService
+        private noteService: TranscriptionNoteService
     ) {}
 
     /**
@@ -74,8 +72,8 @@ export class BatchManager {
         notice.hide();
 
         if (results.length > 0) {
-            await this.dailyNoteLinkService.linkNotesToDailyNote(results);
-            new Notice(`成功生成 ${results.length} 个语音笔记并已添加到日记中。`);
+            // Linking to daily notes is handled by AutoLinkManager via vault 'create' event
+            new Notice(`成功生成 ${results.length} 个语音笔记。`);
         } else {
             new Notice('未能生成任何语音笔记。');
         }

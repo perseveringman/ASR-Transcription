@@ -3,10 +3,14 @@ import { PluginSettings } from '../types/config';
 import { TranscriptionManager } from './transcription-manager';
 import { LLMManager } from './llm-manager';
 import { TranscriptionNoteService } from '../services/transcription-note-service';
-import { DailyNoteLinkService } from '../services/daily-note-link-service';
 
 const AUDIO_EXTENSIONS = ['mp3', 'wav', 'm4a', 'ogg', 'webm', 'flac', 'aac'];
 const FILE_SETTLE_DELAY_MS = 3000; // Wait for file sync to complete
+
+/** Normalize folder path: strip leading '/' since Obsidian vault paths never start with '/' */
+function normalizeFolderPath(folder: string): string {
+    return folder.replace(/^\/+/, '') || '/';
+}
 
 /**
  * Manages automatic transcription of audio files.
@@ -22,8 +26,7 @@ export class AutoTranscriptionManager {
         private settings: PluginSettings,
         private transcriptionManager: TranscriptionManager,
         private llmManager: LLMManager,
-        private noteService: TranscriptionNoteService,
-        private dailyNoteLinkService: DailyNoteLinkService
+        private noteService: TranscriptionNoteService
     ) {}
 
     /**
@@ -37,6 +40,7 @@ export class AutoTranscriptionManager {
 
         // Initial scan for unprocessed audio files
         // Use setTimeout to avoid blocking plugin startup
+        new Notice('自动转写已启动，正在监听新录音...');
         setTimeout(() => {
             void this.scanAndProcessPending();
         }, 5000); // 5s delay to let vault fully index
@@ -81,7 +85,7 @@ export class AutoTranscriptionManager {
             return;
         }
 
-        const audioFolder = this.settings.audioSaveFolder || '/';
+        const audioFolder = normalizeFolderPath(this.settings.audioSaveFolder || '/');
         const allFiles = this.app.vault.getFiles();
         
         const audioFiles = allFiles.filter(file => {
@@ -92,12 +96,19 @@ export class AutoTranscriptionManager {
             return isAudio && inFolder;
         });
 
+        console.log(`[ASR Auto] 扫描目录: "${audioFolder}", 找到 ${audioFiles.length} 个音频文件`);
+
         const unprocessed: TFile[] = [];
         for (const file of audioFiles) {
-            if (await this.isUnprocessedAudio(file)) {
+            const isUnprocessed = await this.isUnprocessedAudio(file);
+            const ts = this.getTimestampForFilename(file);
+            console.log(`[ASR Auto] ${file.name} → timestamp=${ts}, unprocessed=${isUnprocessed}`);
+            if (isUnprocessed) {
                 unprocessed.push(file);
             }
         }
+
+        console.log(`[ASR Auto] 未处理音频: ${unprocessed.length} 个`);
 
         if (unprocessed.length === 0) {
             return;
@@ -140,7 +151,7 @@ export class AutoTranscriptionManager {
         }
 
         // Check if file is in the audioSaveFolder
-        const audioFolder = this.settings.audioSaveFolder || '/';
+        const audioFolder = normalizeFolderPath(this.settings.audioSaveFolder || '/');
         if (audioFolder !== '/') {
             if (!file.path.startsWith(audioFolder + '/')) {
                 return;
@@ -186,7 +197,7 @@ export class AutoTranscriptionManager {
             return false;
         }
 
-        const voiceNoteFolder = this.settings.voiceNoteFolder || '/';
+        const voiceNoteFolder = normalizeFolderPath(this.settings.voiceNoteFolder || '/');
         const timestamp = this.getTimestampForFilename(file);
         const expectedNoteName = `Transcription-${timestamp}.md`;
         const expectedPath = voiceNoteFolder === '/'
@@ -197,7 +208,8 @@ export class AutoTranscriptionManager {
     }
 
     /**
-     * Process a single audio file: transcribe → polish → create note → link to daily note.
+     * Process a single audio file: transcribe → polish → create note.
+     * Linking to daily note is handled independently by AutoLinkManager.
      */
     private async processAudioFile(file: TFile): Promise<void> {
         if (this.processing.has(file.path)) {
@@ -221,10 +233,7 @@ export class AutoTranscriptionManager {
             }
 
             // 3. Create transcription note
-            const noteFile = await this.noteService.createTranscriptionNote(fullText, file, aiText);
-
-            // 4. Link to daily note
-            await this.dailyNoteLinkService.linkNotesToDailyNote([noteFile]);
+            await this.noteService.createTranscriptionNote(fullText, file, aiText);
         } finally {
             this.processing.delete(file.path);
         }
@@ -233,12 +242,45 @@ export class AutoTranscriptionManager {
     /**
      * Get timestamp string for matching transcription note filenames.
      * Matches the logic in TranscriptionNoteService.getTimestampForFilename.
+     *
+     * Priority: filename timestamp > mtime > ctime > now
+     * File ctime is unreliable after sync/copy operations (all files get the same ctime).
      */
     private getTimestampForFilename(audioFile: TFile): string {
-        const audioCreatedAt = audioFile.stat?.ctime;
-        if (typeof audioCreatedAt === 'number' && Number.isFinite(audioCreatedAt)) {
-            return moment(audioCreatedAt).format('YYYYMMDD-HHmmss');
+        // 1. Try to extract timestamp from filename (e.g. "20260123-203038.m4a")
+        const filenameTimestamp = this.extractTimestampFromFilename(audioFile.basename);
+        if (filenameTimestamp) {
+            return filenameTimestamp;
         }
+
+        // 2. Fallback to mtime (content modification time, more reliable than ctime)
+        const mtime = audioFile.stat?.mtime;
+        if (typeof mtime === 'number' && Number.isFinite(mtime)) {
+            return moment(mtime).format('YYYYMMDD-HHmmss');
+        }
+
+        // 3. Fallback to ctime
+        const ctime = audioFile.stat?.ctime;
+        if (typeof ctime === 'number' && Number.isFinite(ctime)) {
+            return moment(ctime).format('YYYYMMDD-HHmmss');
+        }
+
         return moment().format('YYYYMMDD-HHmmss');
+    }
+
+    /**
+     * Extract YYYYMMDD-HHmmss timestamp from a filename like "20260123-203038".
+     * Returns null if the filename doesn't match the expected pattern.
+     */
+    private extractTimestampFromFilename(basename: string): string | null {
+        const match = basename.match(/^(\d{8}-\d{6})/);
+        if (match) {
+            // Validate it's a real date
+            const parsed = moment(match[1], 'YYYYMMDD-HHmmss', true);
+            if (parsed.isValid()) {
+                return match[1];
+            }
+        }
+        return null;
     }
 }

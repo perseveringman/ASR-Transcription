@@ -68,6 +68,16 @@ export class GeneralSettingsTab {
                     this.plugin.settings.enableAutoTranscription = value;
                     await this.plugin.saveSettings();
                 }));
+
+        new Setting(this.containerEl)
+            .setName('Auto link to daily note')
+            .setDesc('Automatically link transcription notes to their corresponding daily notes. Scans for unlinked notes on startup and monitors new ones.')
+            .addToggle(toggle => toggle
+                .setValue(this.plugin.settings.enableAutoLink)
+                .onChange(async (value) => {
+                    this.plugin.settings.enableAutoLink = value;
+                    await this.plugin.saveSettings();
+                }));
         
         // Insertion Settings
         new Setting(this.containerEl)

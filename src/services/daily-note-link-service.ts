@@ -12,11 +12,12 @@ export class DailyNoteLinkService {
      * Groups notes by date and links each group to the appropriate daily note.
      */
     public async linkNotesToDailyNote(notes: TFile[]): Promise<void> {
-        // Group notes by date based on their creation time
+        // Group notes by date: prefer parsing from filename (Transcription-YYYYMMDD-HHmmss),
+        // fall back to note creation time
         const notesByDate = new Map<string, TFile[]>();
         
         for (const note of notes) {
-            const date = moment(note.stat.ctime).format('YYYY-MM-DD');
+            const date = this.getDateFromNote(note);
             if (!notesByDate.has(date)) {
                 notesByDate.set(date, []);
             }
@@ -33,8 +34,9 @@ export class DailyNoteLinkService {
      * Link notes to today's daily note (backward compatible with BatchManager usage).
      */
     private async linkNotesToSingleDailyNote(notes: TFile[]): Promise<void> {
-        // Use the first note's creation time to determine the daily note date
-        const noteDate = notes.length > 0 ? moment(notes[0].stat.ctime) : moment();
+        // Use the first note's date to determine the daily note date
+        const dateStr = notes.length > 0 ? this.getDateFromNote(notes[0]) : moment().format('YYYY-MM-DD');
+        const noteDate = moment(dateStr, 'YYYY-MM-DD');
         const dailyNote = await this.getOrCreateDailyNote(noteDate);
         if (!dailyNote) {
             return;
@@ -74,6 +76,19 @@ export class DailyNoteLinkService {
      * Gets a daily note for the given date or creates it if it doesn't exist.
      * Falls back to today if no date is provided.
      */
+    /**
+     * Extract the date from a transcription note.
+     * Parses from filename first (Transcription-YYYYMMDD-HHmmss.md),
+     * falls back to note ctime.
+     */
+    private getDateFromNote(note: TFile): string {
+        const match = note.basename.match(/^Transcription-(\d{4})(\d{2})(\d{2})/);
+        if (match) {
+            return `${match[1]}-${match[2]}-${match[3]}`;
+        }
+        return moment(note.stat.ctime).format('YYYY-MM-DD');
+    }
+
     public async getOrCreateDailyNote(date?: ReturnType<typeof moment>): Promise<TFile | null> {
         const targetDate = date || moment();
         

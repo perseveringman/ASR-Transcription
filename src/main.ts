@@ -11,6 +11,7 @@ import { LLMManager } from './managers/llm-manager';
 import { ActionManager } from './managers/action-manager';
 import { BatchManager } from './managers/batch-manager';
 import { AutoTranscriptionManager } from './managers/auto-transcription-manager';
+import { AutoLinkManager } from './managers/auto-link-manager';
 import { TranscriptionNoteService } from './services/transcription-note-service';
 import { DailyNoteLinkService } from './services/daily-note-link-service';
 import { ArticleReaderManager } from './managers/article-reader-manager';
@@ -27,6 +28,7 @@ export default class ASRPlugin extends Plugin {
     noteService!: TranscriptionNoteService;
     articleReaderManager!: ArticleReaderManager;
     autoTranscriptionManager!: AutoTranscriptionManager;
+    autoLinkManager!: AutoLinkManager;
     dailyNoteLinkService!: DailyNoteLinkService;
 
     async onload() {
@@ -39,14 +41,18 @@ export default class ASRPlugin extends Plugin {
         this.noteService = new TranscriptionNoteService(this.app, this.settings);
         this.dailyNoteLinkService = new DailyNoteLinkService(this.app);
         this.actionManager = new ActionManager(this.app, this.llmManager, this.settings, this.saveSettings.bind(this));
-        this.batchManager = new BatchManager(this.app, this.settings, this.transcriptionManager, this.llmManager, this.noteService, this.dailyNoteLinkService);
+        this.batchManager = new BatchManager(this.app, this.settings, this.transcriptionManager, this.llmManager, this.noteService);
         this.articleReaderManager = new ArticleReaderManager(this.app, this.settings, this.llmManager);
         this.autoTranscriptionManager = new AutoTranscriptionManager(
             this.app,
             this.settings,
             this.transcriptionManager,
             this.llmManager,
-            this.noteService,
+            this.noteService
+        );
+        this.autoLinkManager = new AutoLinkManager(
+            this.app,
+            this.settings,
             this.dailyNoteLinkService
         );
 
@@ -190,6 +196,9 @@ export default class ASRPlugin extends Plugin {
 
         // Start auto transcription monitoring
         this.autoTranscriptionManager.start();
+
+        // Start auto link monitoring
+        this.autoLinkManager.start();
     }
 
     async activateView() {
@@ -384,6 +393,9 @@ export default class ASRPlugin extends Plugin {
         if (this.autoTranscriptionManager) {
             this.autoTranscriptionManager.stop();
         }
+        if (this.autoLinkManager) {
+            this.autoLinkManager.stop();
+        }
     }
 
     async loadSettings() {
@@ -411,6 +423,11 @@ export default class ASRPlugin extends Plugin {
         // Update auto transcription manager
         if (this.autoTranscriptionManager) {
             this.autoTranscriptionManager.updateSettings(this.settings);
+        }
+
+        // Update auto link manager
+        if (this.autoLinkManager) {
+            this.autoLinkManager.updateSettings(this.settings);
         }
     }
 }

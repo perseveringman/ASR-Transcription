@@ -63,12 +63,49 @@ export class TranscriptionNoteService {
         return await this.app.vault.create(path, content);
     }
 
+    /**
+     * Get timestamp for note filename from audio file.
+     *
+     * Priority: filename timestamp > mtime > ctime > now
+     * File ctime is unreliable after sync/copy operations.
+     */
     private getTimestampForFilename(audioFile?: TFile): string {
-        const audioCreatedAt = audioFile?.stat?.ctime;
-        if (typeof audioCreatedAt === 'number' && Number.isFinite(audioCreatedAt)) {
-            return moment(audioCreatedAt).format('YYYYMMDD-HHmmss');
+        if (audioFile) {
+            // 1. Try to extract timestamp from filename (e.g. "20260123-203038.m4a")
+            const filenameTimestamp = this.extractTimestampFromFilename(audioFile.basename);
+            if (filenameTimestamp) {
+                return filenameTimestamp;
+            }
+
+            // 2. Fallback to mtime (content modification time, more reliable than ctime)
+            const mtime = audioFile.stat?.mtime;
+            if (typeof mtime === 'number' && Number.isFinite(mtime)) {
+                return moment(mtime).format('YYYYMMDD-HHmmss');
+            }
+
+            // 3. Fallback to ctime
+            const ctime = audioFile.stat?.ctime;
+            if (typeof ctime === 'number' && Number.isFinite(ctime)) {
+                return moment(ctime).format('YYYYMMDD-HHmmss');
+            }
         }
+
         return moment().format('YYYYMMDD-HHmmss');
+    }
+
+    /**
+     * Extract YYYYMMDD-HHmmss timestamp from a filename like "20260123-203038".
+     * Returns null if the filename doesn't match the expected pattern.
+     */
+    private extractTimestampFromFilename(basename: string): string | null {
+        const match = basename.match(/^(\d{8}-\d{6})/);
+        if (match) {
+            const parsed = moment(match[1], 'YYYYMMDD-HHmmss', true);
+            if (parsed.isValid()) {
+                return match[1];
+            }
+        }
+        return null;
     }
 
     private async ensureUniquePath(initialPath: string): Promise<string> {
