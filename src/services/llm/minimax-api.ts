@@ -22,7 +22,7 @@ export class MinimaxLLMService implements LLMService {
 
     private buildBody(messages: LLMMessage[], stream = false): Record<string, unknown> {
         const body: Record<string, unknown> = {
-            model: this.settings.minimaxModel || 'MiniMax-M2.1',
+            model: this.settings.minimaxModel || 'MiniMax-M2.5',
             messages: messages,
             temperature: 1.0 // MiniMax recommends temperature=1.0
         };

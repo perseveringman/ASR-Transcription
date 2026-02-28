@@ -178,7 +178,7 @@ export class TranscriptionNoteService {
         }
         
         if (aiText) {
-            result += `\n\n> [!AI] AI Polish\n> ${aiText.trim()}`;
+            result += `\n\n> [!AI] AI润色\n> ${aiText.trim()}`;
         }
 
         if (audioFile) {

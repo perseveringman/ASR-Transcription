@@ -1,4 +1,4 @@
-import { requestUrl, RequestUrlParam } from 'obsidian';
+import { requestUrl, RequestUrlParam, Platform } from 'obsidian';
 import { LLMService, LLMMessage, StreamCallback } from '../../types/llm';
 import { PluginSettings } from '../../types/config';
 
@@ -9,12 +9,18 @@ export class OpenRouterLLMService implements LLMService {
     constructor(private settings: PluginSettings) {}
 
     private getHeaders(): Record<string, string> {
-        return {
+        const headers: Record<string, string> = {
             'Authorization': `Bearer ${this.settings.openRouterApiKey}`,
             'Content-Type': 'application/json',
-            'HTTP-Referer': 'https://github.com/obsidian-plugins/asr-transcription',
-            'X-Title': 'Obsidian ASR Plugin'
         };
+        // HTTP-Referer and X-Title are optional for OpenRouter.
+        // On iOS, system networking may strip or reject custom Referer headers,
+        // causing 403 errors. Only include them on desktop.
+        if (!Platform.isMobile) {
+            headers['HTTP-Referer'] = 'https://github.com/obsidian-plugins/asr-transcription';
+            headers['X-Title'] = 'Obsidian ASR Plugin';
+        }
+        return headers;
     }
 
     async complete(messages: LLMMessage[]): Promise<string> {
@@ -32,7 +38,8 @@ export class OpenRouterLLMService implements LLMService {
             url: this.baseUrl,
             method: 'POST',
             headers: this.getHeaders(),
-            body: JSON.stringify(body)
+            body: JSON.stringify(body),
+            throw: false
         };
 
         try {
@@ -41,16 +48,16 @@ export class OpenRouterLLMService implements LLMService {
             if (response.status >= 400) {
                 let errorMessage = `Status ${response.status}`;
                 try {
-                    const errorBody = JSON.parse(response.text);
+                    const errorBody = typeof response.json === 'object' ? response.json : JSON.parse(response.text);
                     if (errorBody.error && errorBody.error.message) {
                         errorMessage = errorBody.error.message;
                     } else {
-                        errorMessage = response.text.substring(0, 200);
+                        errorMessage = response.text?.substring(0, 300) || `HTTP ${response.status}`;
                     }
                 } catch {
-                    errorMessage = response.text.substring(0, 200);
+                    errorMessage = response.text?.substring(0, 300) || `HTTP ${response.status}`;
                 }
-                throw new Error(`OpenRouter error: ${errorMessage}`);
+                throw new Error(`OpenRouter error (${response.status}): ${errorMessage}`);
             }
 
             const data = response.json;

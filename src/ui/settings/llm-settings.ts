@@ -7,18 +7,18 @@ export class LLMSettingsTab {
 
     display(): void {
         new Setting(this.containerEl)
-            .setName('Intelligence (LLM)')
+            .setName('智能体（LLM）')
             .setHeading();
             
         new Setting(this.containerEl)
-            .setDesc('Configure the LLM provider used for AI features like Polishing.')
-            .setName('Global LLM provider')
+            .setDesc('配置用于 AI 润色等功能的 LLM 提供商。')
+            .setName('全局 LLM 提供商')
             .addDropdown(dropdown => dropdown
                 .addOption(LLMProvider.OPENROUTER, 'OpenRouter')
                 .addOption(LLMProvider.GEMINI, 'Google Gemini')
                 .addOption(LLMProvider.OPENAI, 'OpenAI')
                 .addOption(LLMProvider.ANTHROPIC, 'Anthropic Claude')
-                .addOption(LLMProvider.ZHIPU, 'Zhipu AI')
+                .addOption(LLMProvider.ZHIPU, '智谱 AI')
                 .addOption(LLMProvider.MINIMAX, 'Minimax')
                 .addOption(LLMProvider.DEEPSEEK, 'DeepSeek')
                 .setValue(this.plugin.settings.llmProvider)
@@ -37,8 +37,8 @@ export class LLMSettingsTab {
 
         if (provider === LLMProvider.OPENROUTER) {
             new Setting(containerEl)
-                .setName('OpenRouter API key')
-                .setDesc('Your OpenRouter API key')
+                .setName('OpenRouter API 密钥')
+                .setDesc('您的 OpenRouter API 密钥')
                 .addText(text => text
                     .setPlaceholder('sk-or-...')
                     .setValue(this.plugin.settings.openRouterApiKey)
@@ -49,8 +49,8 @@ export class LLMSettingsTab {
                     .inputEl.type = 'password');
 
             new Setting(containerEl)
-                .setName('Model')
-                .setDesc('OpenRouter model ID')
+                .setName('模型')
+                .setDesc('OpenRouter 模型 ID')
                 .addText(text => text
                     .setPlaceholder('google/gemini-2.0-flash-exp:free')
                     .setValue(this.plugin.settings.openRouterModel)
@@ -60,10 +60,10 @@ export class LLMSettingsTab {
                     }));
         } else if (provider === LLMProvider.GEMINI) {
             new Setting(containerEl)
-                .setName('Gemini API key')
-                .setDesc('Your Google Gemini API key')
+                .setName('Gemini API 密钥')
+                .setDesc('您的 Google Gemini API 密钥')
                 .addText(text => text
-                    .setPlaceholder('Enter your API key')
+                    .setPlaceholder('输入您的 API 密钥')
                     .setValue(this.plugin.settings.geminiApiKey)
                     .onChange(async (value) => {
                         this.plugin.settings.geminiApiKey = value.trim();
@@ -72,8 +72,8 @@ export class LLMSettingsTab {
                     .inputEl.type = 'password');
 
             new Setting(containerEl)
-                .setName('Model')
-                .setDesc('Gemini model ID')
+                .setName('模型')
+                .setDesc('Gemini 模型 ID')
                 .addText(text => text
                     .setPlaceholder('gemini-2.0-flash')
                     .setValue(this.plugin.settings.geminiModel)
@@ -83,8 +83,8 @@ export class LLMSettingsTab {
                     }));
         } else if (provider === LLMProvider.OPENAI) {
             new Setting(containerEl)
-                .setName('OpenAI API key')
-                .setDesc('Your OpenAI API key')
+                .setName('OpenAI API 密钥')
+                .setDesc('您的 OpenAI API 密钥')
                 .addText(text => text
                     .setPlaceholder('sk-...')
                     .setValue(this.plugin.settings.openAIApiKey)
@@ -95,8 +95,8 @@ export class LLMSettingsTab {
                     .inputEl.type = 'password');
 
             new Setting(containerEl)
-                .setName('Model')
-                .setDesc('OpenAI model ID')
+                .setName('模型')
+                .setDesc('OpenAI 模型 ID')
                 .addText(text => text
                     .setPlaceholder('gpt-4o-mini')
                     .setValue(this.plugin.settings.openAIModel)
@@ -106,8 +106,8 @@ export class LLMSettingsTab {
                     }));
             
             new Setting(containerEl)
-                .setName('Base URL')
-                .setDesc('Custom API Base URL (optional)')
+                .setName('基础地址')
+                .setDesc('自定义 API 基础地址（可选）')
                 .addText(text => text
                     .setPlaceholder('https://api.openai.com/v1')
                     .setValue(this.plugin.settings.openAIBaseUrl)
@@ -117,8 +117,8 @@ export class LLMSettingsTab {
                     }));
         } else if (provider === LLMProvider.ANTHROPIC) {
             new Setting(containerEl)
-                .setName('Anthropic API key')
-                .setDesc('Your Anthropic API key')
+                .setName('Anthropic API 密钥')
+                .setDesc('您的 Anthropic API 密钥')
                 .addText(text => text
                     .setPlaceholder('sk-ant-...')
                     .setValue(this.plugin.settings.anthropicApiKey)
@@ -129,8 +129,8 @@ export class LLMSettingsTab {
                     .inputEl.type = 'password');
 
             new Setting(containerEl)
-                .setName('Model')
-                .setDesc('Claude model ID')
+                .setName('模型')
+                .setDesc('Claude 模型 ID')
                 .addText(text => text
                     .setPlaceholder('claude-3-5-sonnet-latest')
                     .setValue(this.plugin.settings.anthropicModel)
@@ -140,10 +140,10 @@ export class LLMSettingsTab {
                     }));
         } else if (provider === LLMProvider.ZHIPU) {
             new Setting(containerEl)
-                .setName('Zhipu LLM API key')
-                .setDesc('Your Zhipu AI API key (can be same as ASR key)')
+                .setName('智谱 LLM API 密钥')
+                .setDesc('您的智谱 AI API 密钥（可与 ASR 共用）')
                 .addText(text => text
-                    .setPlaceholder('Enter your API key')
+                    .setPlaceholder('输入您的 API 密钥')
                     .setValue(this.plugin.settings.zhipuLLMApiKey)
                     .onChange(async (value) => {
                         this.plugin.settings.zhipuLLMApiKey = value.trim();
@@ -152,8 +152,8 @@ export class LLMSettingsTab {
                     .inputEl.type = 'password');
 
             new Setting(containerEl)
-                .setName('Model')
-                .setDesc('Zhipu model ID')
+                .setName('模型')
+                .setDesc('智谱模型 ID')
                 .addText(text => text
                     .setPlaceholder('glm-4-flash')
                     .setValue(this.plugin.settings.zhipuLLMModel)
@@ -163,10 +163,10 @@ export class LLMSettingsTab {
                     }));
         } else if (provider === LLMProvider.MINIMAX) {
             new Setting(containerEl)
-                .setName('Minimax API key')
-                .setDesc('Your Minimax API key')
+                .setName('Minimax API 密钥')
+                .setDesc('您的 Minimax API 密钥')
                 .addText(text => text
-                    .setPlaceholder('Enter your API key')
+                    .setPlaceholder('输入您的 API 密钥')
                     .setValue(this.plugin.settings.minimaxApiKey)
                     .onChange(async (value) => {
                         this.plugin.settings.minimaxApiKey = value.trim();
@@ -175,10 +175,10 @@ export class LLMSettingsTab {
                     .inputEl.type = 'password');
 
             new Setting(containerEl)
-                .setName('Model')
-                .setDesc('Minimax model ID (MiniMax-M2.1, MiniMax-M2.1-lightning, MiniMax-M2)')
+                .setName('模型')
+                .setDesc('Minimax 模型 ID')
                 .addText(text => text
-                    .setPlaceholder('MiniMax-M2.1')
+                    .setPlaceholder('MiniMax-M2.5')
                     .setValue(this.plugin.settings.minimaxModel)
                     .onChange(async (value) => {
                         this.plugin.settings.minimaxModel = value.trim();
@@ -186,8 +186,8 @@ export class LLMSettingsTab {
                     }));
         } else if (provider === LLMProvider.DEEPSEEK) {
             new Setting(containerEl)
-                .setName('DeepSeek API key')
-                .setDesc('Your DeepSeek API key')
+                .setName('DeepSeek API 密钥')
+                .setDesc('您的 DeepSeek API 密钥')
                 .addText(text => text
                     .setPlaceholder('sk-...')
                     .setValue(this.plugin.settings.deepseekApiKey)
@@ -198,8 +198,8 @@ export class LLMSettingsTab {
                     .inputEl.type = 'password');
 
             new Setting(containerEl)
-                .setName('Model')
-                .setDesc('DeepSeek model ID')
+                .setName('模型')
+                .setDesc('DeepSeek 模型 ID')
                 .addText(text => text
                     .setPlaceholder('deepseek-chat')
                     .setValue(this.plugin.settings.deepseekModel)

@@ -1,4 +1,4 @@
-import { App, TFile, TAbstractFile, Notice, moment, EventRef } from 'obsidian';
+import { App, TFile, TAbstractFile, Notice, moment, EventRef, Platform } from 'obsidian';
 import { PluginSettings } from '../types/config';
 import { TranscriptionManager } from './transcription-manager';
 import { LLMManager } from './llm-manager';
@@ -6,6 +6,8 @@ import { TranscriptionNoteService } from '../services/transcription-note-service
 
 const AUDIO_EXTENSIONS = ['mp3', 'wav', 'm4a', 'ogg', 'webm', 'flac', 'aac'];
 const FILE_SETTLE_DELAY_MS = 3000; // Wait for file sync to complete
+const STARTUP_SCAN_DELAY_MS = 30000; // Wait for sync to complete before startup scan
+const SYNC_RECHECK_DELAY_MS = 10000; // Wait before re-checking if a note was synced
 
 /** Normalize folder path: strip leading '/' since Obsidian vault paths never start with '/' */
 function normalizeFolderPath(folder: string): string {
@@ -38,17 +40,19 @@ export class AutoTranscriptionManager {
             return;
         }
 
-        // Initial scan for unprocessed audio files
-        // Use setTimeout to avoid blocking plugin startup
-        new Notice('自动转写已启动，正在监听新录音...');
-        setTimeout(() => {
-            void this.scanAndProcessPending();
-        }, 5000); // 5s delay to let vault fully index
-
-        // Register event listener for new files
+        // Register event listener for new files immediately,
+        // but the handler has its own sync-safety checks.
         this.eventRef = this.app.vault.on('create', (file: TAbstractFile) => {
             this.onFileCreated(file);
         });
+
+        // Initial scan for unprocessed audio files.
+        // Use a long delay to let vault sync complete first —
+        // prevents re-processing files that were already handled on another device.
+        new Notice('自动转写已启动，等待同步完成后扫描...');
+        setTimeout(() => {
+            void this.scanAndProcessPending();
+        }, STARTUP_SCAN_DELAY_MS);
     }
 
     /**
@@ -110,18 +114,29 @@ export class AutoTranscriptionManager {
 
         console.log(`[ASR Auto] 未处理音频: ${unprocessed.length} 个`);
 
-        if (unprocessed.length === 0) {
+        // 移动端仅处理今天的音频文件
+        let toProcess = unprocessed;
+        if (Platform.isMobile) {
+            const todayStr = moment().format('YYYYMMDD');
+            toProcess = unprocessed.filter(file => {
+                const ts = this.getTimestampForFilename(file);
+                return ts.startsWith(todayStr);
+            });
+            console.log(`[ASR Auto] 移动端模式: 仅处理今天的音频, ${toProcess.length}/${unprocessed.length} 个`);
+        }
+
+        if (toProcess.length === 0) {
             return;
         }
 
-        const notice = new Notice(`发现 ${unprocessed.length} 个未转写的录音，正在自动处理...`, 0);
+        const notice = new Notice(`发现 ${toProcess.length} 个未转写的录音，正在自动处理...`, 0);
 
         let completed = 0;
-        for (const file of unprocessed) {
+        for (const file of toProcess) {
             try {
                 await this.processAudioFile(file);
                 completed++;
-                notice.setMessage(`自动转写进度: ${completed}/${unprocessed.length}...`);
+                notice.setMessage(`自动转写进度: ${completed}/${toProcess.length}...`);
             } catch (error) {
                 console.error(`[ASR Auto] 自动转写失败: ${file.name}`, error);
             }
@@ -130,7 +145,7 @@ export class AutoTranscriptionManager {
         notice.hide();
 
         if (completed > 0) {
-            new Notice(`自动转写完成: ${completed}/${unprocessed.length} 个录音已处理`);
+            new Notice(`自动转写完成: ${completed}/${toProcess.length} 个录音已处理`);
         }
     }
 
@@ -191,6 +206,8 @@ export class AutoTranscriptionManager {
     /**
      * Check if an audio file has already been transcribed.
      * Looks for a matching transcription note in voiceNoteFolder.
+     * Uses a re-check delay to handle sync races — if the note doesn't exist
+     * on first check, waits and checks again in case it's still syncing.
      */
     private async isUnprocessedAudio(file: TFile): Promise<boolean> {
         if (this.processing.has(file.path)) {
@@ -204,6 +221,13 @@ export class AutoTranscriptionManager {
             ? expectedNoteName
             : `${voiceNoteFolder}/${expectedNoteName}`;
 
+        // First check
+        if (await this.app.vault.adapter.exists(expectedPath)) {
+            return false;
+        }
+
+        // Wait and re-check — the corresponding note may still be syncing
+        await new Promise(resolve => setTimeout(resolve, SYNC_RECHECK_DELAY_MS));
         return !(await this.app.vault.adapter.exists(expectedPath));
     }
 
@@ -228,7 +252,9 @@ export class AutoTranscriptionManager {
                 try {
                     aiText = await this.llmManager.polish(fullText);
                 } catch (e) {
+                    const message = e instanceof Error ? e.message : String(e);
                     console.error(`[ASR Auto] AI Polishing failed for ${file.name}:`, e);
+                    new Notice(`AI 润色失败: ${message}`, 5000);
                 }
             }
 

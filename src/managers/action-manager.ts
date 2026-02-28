@@ -335,7 +335,7 @@ export class ActionManager {
         }
 
         if (!activeView) {
-            new Notice('No active Markdown file found.');
+            new Notice('未找到活动的 Markdown 文件。');
             return;
         }
 
@@ -343,7 +343,7 @@ export class ActionManager {
         const content = editor.getValue();
         
         if (!content.trim()) {
-            new Notice('Note is empty.');
+            new Notice('笔记内容为空。');
             return;
         }
 
@@ -366,7 +366,7 @@ export class ActionManager {
         }
 
         if (!activeView) {
-            new Notice('No active Markdown view found.');
+            new Notice('未找到活动的 Markdown 视图。');
             return;
         }
 
@@ -374,7 +374,7 @@ export class ActionManager {
         const selection = editor.getSelection();
 
         if (!selection.trim()) {
-            new Notice('No text selected.');
+            new Notice('未选中任何文本。');
             return;
         }
 
@@ -385,23 +385,23 @@ export class ActionManager {
     private async executeFolderAction(action: AIAction) {
         const activeFile = this.app.workspace.getActiveFile();
         if (!activeFile) {
-            new Notice('No active file to determine folder.');
+            new Notice('未找到活动文件。');
             return;
         }
 
         const parent = activeFile.parent;
         if (!parent) {
-             new Notice('Cannot determine parent folder.');
+             new Notice('无法确定父文件夹。');
              return;
         }
 
         const files = this.fetchFilesByFolder(parent);
         if (files.length === 0) {
-            new Notice('No markdown files found in current folder.');
+            new Notice('当前文件夹中没有 Markdown 文件。');
             return;
         }
 
-        new Notice(`Processing ${files.length} notes in folder ${parent.name}...`);
+        new Notice(`正在处理文件夹 ${parent.name} 中的 ${files.length} 篇笔记...`);
         
         const combinedContent = await this.combineFilesContent(files, `Folder: ${parent.path}`);
         this.runLLM(action, combinedContent, null, files, undefined, undefined, `Folder: ${parent.name}`);
@@ -410,11 +410,11 @@ export class ActionManager {
     private async executeTagAction(action: AIAction, tag: string) {
         const files = this.fetchFilesByTag(tag);
          if (files.length === 0) {
-            new Notice(`No notes found with tag ${tag}.`);
+            new Notice(`未找到标签为 ${tag} 的笔记。`);
             return;
         }
 
-        new Notice(`Processing ${files.length} notes with tag ${tag}...`);
+        new Notice(`正在处理标签 ${tag} 下的 ${files.length} 篇笔记...`);
 
         const combinedContent = await this.combineFilesContent(files, `Tag: ${tag}`);
         this.runLLM(action, combinedContent, null, files, undefined, undefined, `Tag: ${tag}`);
@@ -468,11 +468,11 @@ export class ActionManager {
     private async executeDateRangeAction(action: AIAction, start: moment.Moment, end: moment.Moment) {
         const files = this.fetchFilesByDateRange(start, end);
         if (files.length === 0) {
-            new Notice('No notes found in the selected date range.');
+            new Notice('所选日期范围内没有找到笔记。');
             return;
         }
 
-        new Notice(`Processing ${files.length} notes...`);
+        new Notice(`正在处理 ${files.length} 篇笔记...`);
 
         const combinedContent = await this.combineFilesContent(files, `Analysis Period: ${start.format('YYYY-MM-DD')} to ${end.format('YYYY-MM-DD')}`);
 
@@ -492,7 +492,7 @@ export class ActionManager {
     }
 
     private async runLLM(action: AIAction, content: string, sourceFile: TFile | null, sourceFiles: TFile[] = [], start?: moment.Moment, end?: moment.Moment, contextInfo?: string) {
-        new Notice(`Running AI Action: ${action.name}...`);
+        new Notice(`正在执行 AI 操作：${action.name}...`);
 
         const messages = [
             { role: 'system' as const, content: action.systemPrompt },
@@ -506,12 +506,12 @@ export class ActionManager {
             } else {
                 const result = await this.llmManager.complete(messages);
                 await this.handleOutput(action, result, sourceFile, sourceFiles, start, end, contextInfo);
-                new Notice('AI Action completed!');
+                new Notice('AI 操作已完成！');
             }
         } catch (error) {
             console.error('AI Action failed:', error);
             const message = error instanceof Error ? error.message : String(error);
-            new Notice(`AI Action failed: ${message}`);
+            new Notice(`AI 操作失败：${message}`);
         }
     }
 
@@ -600,7 +600,7 @@ export class ActionManager {
                 }
             }
 
-            new Notice('AI Action completed!');
+            new Notice('AI 操作已完成！');
         } catch (error) {
             // On error, keep what we have
             await updateFile(true);
@@ -699,13 +699,13 @@ export class ActionManager {
 
     private async handleFrontmatterOutput(text: string, sourceFile: TFile | null) {
         if (!sourceFile) {
-            new Notice('No source file to update frontmatter.');
+            new Notice('没有可更新 Frontmatter 的源文件。');
             return;
         }
 
         const data = safeParseJson<ExtractedMetadata>(text);
         if (!data) {
-            new Notice('Failed to parse metadata from AI response.');
+            new Notice('无法解析 AI 返回的元数据。');
             return;
         }
 
@@ -739,10 +739,10 @@ export class ActionManager {
                     fm['actionItems'] = Array.from(existingActions);
                 }
             });
-            new Notice('Frontmatter updated successfully!');
+            new Notice('Frontmatter 更新成功！');
         } catch (error) {
             console.error('Failed to update frontmatter:', error);
-            new Notice('Failed to update frontmatter.');
+            new Notice('Frontmatter 更新失败。');
         }
     }
 

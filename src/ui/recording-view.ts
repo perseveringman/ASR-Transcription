@@ -28,16 +28,16 @@ export class RecordingModal extends Modal {
         contentEl.empty();
         contentEl.addClass('asr-recording-modal');
 
-        contentEl.createEl('h2', { text: 'Voice transcription' });
+        contentEl.createEl('h2', { text: '语音转写' });
 
-        this.statusEl = contentEl.createEl('div', { text: 'Ready to record', cls: 'asr-status' });
+        this.statusEl = contentEl.createEl('div', { text: '准备录音', cls: 'asr-status' });
         this.timerEl = contentEl.createEl('div', { text: '00:00', cls: 'asr-timer' });
 
         // Style Selector
         const styleContainer = contentEl.createEl('div', { cls: 'asr-style-container' });
         new Setting(styleContainer)
-            .setName('Output style')
-            .setDesc('How should the AI rewrite this?')
+            .setName('输出风格')
+            .setDesc('AI 应如何润色这段内容？')
             .addDropdown(dropdown => {
                 this.styleSelectEl = dropdown.selectEl;
                 DEFAULT_STYLE_PRESETS.forEach(preset => {
@@ -49,7 +49,7 @@ export class RecordingModal extends Modal {
         const btnContainer = contentEl.createEl('div', { cls: 'asr-btn-container' });
 
         this.startStopBtn = btnContainer.createEl('button', {
-            text: 'Start recording',
+            text: '开始录音',
             cls: 'mod-cta'
         });
 
@@ -62,7 +62,7 @@ export class RecordingModal extends Modal {
         };
 
         this.uploadBtn = btnContainer.createEl('button', {
-            text: 'Upload file',
+            text: '上传文件',
         });
 
         this.uploadBtn.onclick = () => {
@@ -81,7 +81,7 @@ export class RecordingModal extends Modal {
         };
         this.handlers['error'] = (err: unknown) => {
             const message = err instanceof Error ? err.message : String(err);
-            new Notice(`Recording error: ${message}`);
+            new Notice(`录音出错: ${message}`);
             this.updateUI(RecordingState.IDLE);
         };
 
@@ -113,7 +113,7 @@ export class RecordingModal extends Modal {
             await this.recorder.start();
         } catch (err: unknown) {
             const message = err instanceof Error ? err.message : String(err);
-            new Notice(`Failed to start recording: ${message}`);
+            new Notice(`录音启动失败：${message}`);
         }
     }
 
@@ -130,7 +130,7 @@ export class RecordingModal extends Modal {
             const file = target.files?.[0];
             if (file) {
                 if (file.size > 25 * 1024 * 1024) {
-                    new Notice('File too large (max 25mb)');
+                    new Notice('文件过大（最大 25MB）');
                     return;
                 }
                 const selectedStyle = this.styleSelectEl ? this.styleSelectEl.value : undefined;
@@ -146,21 +146,21 @@ export class RecordingModal extends Modal {
 
         switch (state) {
             case RecordingState.IDLE:
-                this.statusEl.setText('Ready to record');
-                this.startStopBtn.setText('Start recording');
+                this.statusEl.setText('准备录音');
+                this.startStopBtn.setText('开始录音');
                 this.startStopBtn.disabled = false;
                 this.uploadBtn.disabled = false;
                 if (this.styleSelectEl) this.styleSelectEl.disabled = false;
                 break;
             case RecordingState.RECORDING:
-                this.statusEl.setText('Recording...');
-                this.startStopBtn.setText('Stop recording');
+                this.statusEl.setText('录音中...');
+                this.startStopBtn.setText('停止录音');
                 this.startStopBtn.disabled = false;
                 this.uploadBtn.disabled = true;
                 if (this.styleSelectEl) this.styleSelectEl.disabled = true;
                 break;
             case RecordingState.PROCESSING:
-                this.statusEl.setText('Processing...');
+                this.statusEl.setText('处理中...');
                 this.startStopBtn.disabled = true;
                 this.uploadBtn.disabled = true;
                 if (this.styleSelectEl) this.styleSelectEl.disabled = true;

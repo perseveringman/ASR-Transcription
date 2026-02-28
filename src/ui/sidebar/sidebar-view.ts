@@ -16,7 +16,7 @@ export class AISidebarView extends ItemView {
     }
 
     getDisplayText() {
-        return 'AI Actions';
+        return 'AI 操作';
     }
 
     getIcon() {
@@ -30,19 +30,19 @@ export class AISidebarView extends ItemView {
 
         // Header
         const header = container.createEl('div', { cls: 'asr-sidebar-header' });
-        header.createEl('h4', { text: 'AI Shortcuts' });
+        header.createEl('h4', { text: 'AI 快捷操作' });
 
         // Source Selector
         const sourceDiv = container.createEl('div', { cls: 'asr-source-selector' });
         new Setting(sourceDiv)
-            .setName('Source')
-            .setDesc('Select content source for actions')
+            .setName('内容来源')
+            .setDesc('选择操作的内容来源')
             .addDropdown(dropdown => dropdown
-                .addOption('current-note', 'Current Note')
-                .addOption('selection', 'Selection')
-                .addOption('current-folder', 'Current Folder')
-                .addOption('tag', 'Tag (All Notes)')
-                .addOption('date-range', 'Time Range')
+                .addOption('current-note', '当前笔记')
+                .addOption('selection', '选中内容')
+                .addOption('current-folder', '当前文件夹')
+                .addOption('tag', '标签（所有笔记）')
+                .addOption('date-range', '时间范围')
                 .setValue(this.currentSourceType)
                 .onChange((value) => {
                     this.currentSourceType = value as SourceType;

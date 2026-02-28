@@ -1,8 +1,9 @@
-import { App, TFile, TAbstractFile, Notice, moment, EventRef } from 'obsidian';
+import { App, TFile, TAbstractFile, Notice, moment, EventRef, Platform } from 'obsidian';
 import { PluginSettings } from '../types/config';
 import { DailyNoteLinkService } from '../services/daily-note-link-service';
 
 const NOTE_SETTLE_DELAY_MS = 2000; // Wait for note content to be fully written
+const STARTUP_SCAN_DELAY_MS = 35000; // Wait for sync to complete (after auto-transcription scan)
 
 /** Normalize folder path: strip leading '/' since Obsidian vault paths never start with '/' */
 function normalizeFolderPath(folder: string): string {
@@ -35,12 +36,14 @@ export class AutoLinkManager {
             return;
         }
 
-        new Notice('自动链接已启动，正在监听新转写笔记...');
+        new Notice('自动链接已启动，等待同步完成后扫描...');
 
-        // Initial scan for unlinked transcription notes
+        // Initial scan for unlinked transcription notes.
+        // Use a long delay to let vault sync complete —
+        // slightly after auto-transcription scan to avoid race conditions.
         setTimeout(() => {
             void this.scanAndLinkPending();
-        }, 6000); // 6s delay — slightly after auto-transcription scan (5s)
+        }, STARTUP_SCAN_DELAY_MS);
 
         // Register event listener for new files
         this.eventRef = this.app.vault.on('create', (file: TAbstractFile) => {
@@ -104,16 +107,29 @@ export class AutoLinkManager {
 
         console.log(`[ASR AutoLink] 未链接笔记: ${unlinked.length} 个`);
 
-        if (unlinked.length === 0) {
+        // 移动端仅链接今天的转写笔记
+        let toLink = unlinked;
+        if (Platform.isMobile) {
+            const todayStr = moment().format('YYYY-MM-DD');
+            toLink = unlinked.filter(note => {
+                const match = note.basename.match(/^Transcription-(\d{4})(\d{2})(\d{2})/);
+                if (!match) return false;
+                const dateStr = `${match[1]}-${match[2]}-${match[3]}`;
+                return dateStr === todayStr;
+            });
+            console.log(`[ASR AutoLink] 移动端模式: 仅链接今天的笔记, ${toLink.length}/${unlinked.length} 个`);
+        }
+
+        if (toLink.length === 0) {
             return;
         }
 
-        const notice = new Notice(`发现 ${unlinked.length} 个未链接的转写笔记，正在链接到每日笔记...`, 0);
+        const notice = new Notice(`发现 ${toLink.length} 个未链接的转写笔记，正在链接到每日笔记...`, 0);
 
         try {
-            await this.dailyNoteLinkService.linkNotesToDailyNote(unlinked);
+            await this.dailyNoteLinkService.linkNotesToDailyNote(toLink);
             notice.hide();
-            new Notice(`自动链接完成: ${unlinked.length} 个转写笔记已链接到对应日期的每日笔记`);
+            new Notice(`自动链接完成: ${toLink.length} 个转写笔记已链接到对应日期的每日笔记`);
         } catch (error) {
             notice.hide();
             console.error('[ASR AutoLink] 批量链接失败:', error);

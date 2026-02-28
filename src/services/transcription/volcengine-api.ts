@@ -220,8 +220,9 @@ export class VolcengineTranscriptionService implements TranscriptionService {
         const type = audio.type.toLowerCase();
         if (type.includes('wav')) return 'wav';
         if (type.includes('mp3') || type.includes('mpeg')) return 'mp3';
+        if (type.includes('mp4') || type.includes('m4a')) return 'm4a';
         if (type.includes('ogg')) return 'ogg';
-        // Default to wav as we often convert to it
-        return 'wav';
+        // Default to mp3 as a widely supported format
+        return 'mp3';
     }
 }

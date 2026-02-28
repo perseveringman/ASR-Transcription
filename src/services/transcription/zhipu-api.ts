@@ -21,6 +21,8 @@ export class ZhipuTranscriptionService implements TranscriptionService {
         let filename = audio instanceof File ? audio.name : 'audio.mp3';
         if (audio.type === 'audio/wav' && !filename.endsWith('.wav')) {
             filename = 'audio.wav';
+        } else if ((audio.type === 'audio/mp4' || audio.type === 'audio/x-m4a') && !filename.endsWith('.m4a')) {
+            filename = 'audio.m4a';
         }
 
         return this.transcribeWithRetry(audio, filename);

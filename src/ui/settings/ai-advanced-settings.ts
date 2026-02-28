@@ -16,13 +16,13 @@ export class AIAdvancedSettingsTab {
 
     private displayPolishingSettings() {
         new Setting(this.containerEl)
-            .setName('AI polishing')
+            .setName('AI 润色')
             .setHeading()
-            .setDesc('自动抛光转写内容的风格和提示词。');
+            .setDesc('自动润色转写内容的风格和提示词。');
 
         new Setting(this.containerEl)
-            .setName('启用 AI 抛光')
-            .setDesc('使用已配置模型对转写文本自动抛光')
+            .setName('启用 AI 润色')
+            .setDesc('使用已配置模型对转写文本自动润色')
             .addToggle(toggle => toggle
                 .setValue(this.plugin.settings.enableAiPolishing)
                 .onChange(async (value) => {
@@ -36,8 +36,8 @@ export class AIAdvancedSettingsTab {
         }
 
         new Setting(this.containerEl)
-            .setName('抛光风格')
-            .setDesc('选择用于抛光的风格预设')
+            .setName('润色风格')
+            .setDesc('选择用于润色的风格预设')
             .addDropdown(dropdown => {
                 this.plugin.settings.stylePresets.forEach((preset) => {
                     dropdown.addOption(preset.id, preset.name);
@@ -77,9 +77,9 @@ export class AIAdvancedSettingsTab {
 
     private displayThinkingModelSettings() {
         new Setting(this.containerEl)
-            .setName('Thinking models configuration')
+            .setName('Thinking 模型配置')
             .setHeading()
-            .setDesc('Customize the system prompts for various thinking actions.');
+            .setDesc('自定义各类思维操作的系统提示词。');
 
         const categories = this.plugin.actionManager.getCategories();
 

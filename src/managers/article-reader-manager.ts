@@ -39,7 +39,7 @@ export class ArticleReaderManager {
      * Process a URL: fetch, analyze, create note, return link
      */
     async processUrl(url: string): Promise<{ noteFile: TFile; link: string }> {
-        const notice = new Notice('Processing article...', 0);
+        const notice = new Notice('正在处理文章...', 0);
 
         try {
             let article: ArticleContent;
@@ -47,27 +47,27 @@ export class ArticleReaderManager {
 
             if (this.useJinaMode()) {
                 // Mode 1: Use Jina to fetch, then analyze with LLM
-                notice.setMessage('Fetching with Jina...');
+                notice.setMessage('正在通过 Jina 获取内容...');
                 const fetcher = new JinaArticleFetcher(this.settings.jinaApiKey);
                 article = await fetcher.fetch(url);
                 
-                notice.setMessage('Analyzing with AI...');
+                notice.setMessage('正在 AI 分析...');
                 analysis = await this.analyzeArticle(article);
             } else {
                 // Mode 2: Let LLM directly analyze the URL
-                notice.setMessage('AI analyzing URL...');
+                notice.setMessage('AI 正在分析链接...');
                 const result = await this.analyzeUrlDirectly(url);
                 article = result.article;
                 analysis = result.analysis;
             }
 
-            notice.setMessage('Creating note...');
+            notice.setMessage('正在创建笔记...');
 
             // Create note file
             const noteFile = await this.createArticleNote(article, analysis);
 
             notice.hide();
-            new Notice(`Article note created: ${noteFile.basename}`);
+            new Notice(`文章笔记已创建：${noteFile.basename}`);
 
             // Return link format
             const link = `[[${noteFile.basename}]]`;
@@ -76,7 +76,7 @@ export class ArticleReaderManager {
         } catch (error) {
             notice.hide();
             const message = error instanceof Error ? error.message : String(error);
-            new Notice(`Failed to process article: ${message}`);
+            new Notice(`文章处理失败：${message}`);
             throw error;
         }
     }

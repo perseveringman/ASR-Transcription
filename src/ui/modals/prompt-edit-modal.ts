@@ -1,4 +1,4 @@
-import { App, Modal, Setting } from 'obsidian';
+import { App, Modal, ButtonComponent } from 'obsidian';
 import { DEFAULT_PROMPTS } from '../../data/default-prompts';
 import ASRPlugin from '../../main';
 
@@ -17,74 +17,78 @@ export class PromptEditModal extends Modal {
     }
 
     onOpen() {
-        const { contentEl } = this;
+        const { contentEl, modalEl } = this;
         contentEl.empty();
-        contentEl.addClass('prompt-edit-modal');
+        modalEl.addClass('prompt-edit-modal');
 
-        contentEl.createEl('h2', { text: `Edit Prompt: ${this.actionName}` });
+        // ── Header ──────────────────────────────────────────────
+        const header = contentEl.createEl('div', { cls: 'pem-header' });
+        header.createEl('div', { cls: 'pem-tag', text: 'Prompt' });
+        header.createEl('h3', { cls: 'pem-title', text: this.actionName });
 
-        const defaultPrompt = DEFAULT_PROMPTS[this.actionId] || 'No default prompt found.';
+        // ── Default Prompt (read-only) ───────────────────────────
+        const defaultPrompt = DEFAULT_PROMPTS[this.actionId] || '（暂无默认提示词）';
 
-        // Read-only Default Prompt
-        contentEl.createEl('div', { text: 'Default Prompt (Reference)', cls: 'setting-item-name' });
-        const defaultArea = contentEl.createEl('textarea', { cls: 'prompt-textarea default-prompt' });
+        const defaultSection = contentEl.createEl('div', { cls: 'pem-section' });
+        const defaultLabel = defaultSection.createEl('div', { cls: 'pem-label' });
+        defaultLabel.createEl('span', { text: '默认提示词' });
+        defaultLabel.createEl('span', { cls: 'pem-label-badge pem-label-badge--readonly', text: '只读' });
+
+        const defaultArea = defaultSection.createEl('textarea', { cls: 'pem-textarea pem-textarea--readonly' });
         defaultArea.value = defaultPrompt;
         defaultArea.readOnly = true;
         defaultArea.rows = 6;
-        defaultArea.style.width = '100%';
-        defaultArea.style.backgroundColor = 'var(--background-secondary)';
-        defaultArea.style.color = 'var(--text-muted)';
 
-        contentEl.createEl('hr');
+        // ── Custom Prompt (editable) ─────────────────────────────
+        const customSection = contentEl.createEl('div', { cls: 'pem-section' });
+        const customLabel = customSection.createEl('div', { cls: 'pem-label' });
+        customLabel.createEl('span', { text: '自定义提示词' });
+        customLabel.createEl('span', { cls: 'pem-label-badge pem-label-badge--editable', text: '可编辑' });
 
-        // Editable Custom Prompt
-        contentEl.createEl('div', { text: 'Custom Prompt (Override)', cls: 'setting-item-name' });
-        contentEl.createEl('div', { text: 'Leave empty to use the default prompt.', cls: 'setting-item-description' });
-        
-        const customArea = contentEl.createEl('textarea', { cls: 'prompt-textarea custom-prompt' });
+        customSection.createEl('p', {
+            cls: 'pem-hint',
+            text: '留空则使用默认提示词',
+        });
+
+        const customArea = customSection.createEl('textarea', { cls: 'pem-textarea pem-textarea--editable' });
         customArea.value = this.customPrompt;
-        customArea.placeholder = 'Enter your custom prompt here...';
+        customArea.placeholder = '在此输入自定义提示词…';
         customArea.rows = 10;
-        customArea.style.width = '100%';
-        
-        customArea.oninput = (e) => {
-            const target = e.target as HTMLTextAreaElement;
-            this.customPrompt = target.value;
-        };
 
-        const buttonContainer = contentEl.createEl('div', { cls: 'modal-button-container' });
+        customArea.addEventListener('input', (e) => {
+            this.customPrompt = (e.target as HTMLTextAreaElement).value;
+        });
 
-        // Reset Button
-        new Setting(buttonContainer)
-            .addButton(btn => btn
-                .setButtonText('Reset to Default')
-                .setWarning()
-                .onClick(async () => {
-                    this.customPrompt = '';
-                    customArea.value = '';
+        // ── Footer buttons ───────────────────────────────────────
+        const footer = contentEl.createEl('div', { cls: 'pem-footer' });
+
+        new ButtonComponent(footer)
+            .setButtonText('恢复默认')
+            .setClass('pem-btn-reset')
+            .onClick(async () => {
+                this.customPrompt = '';
+                customArea.value = '';
+                delete this.plugin.settings.customPrompts[this.actionId];
+                await this.plugin.saveSettings();
+                this.close();
+            });
+
+        new ButtonComponent(footer)
+            .setButtonText('保存')
+            .setClass('pem-btn-save')
+            .setCta()
+            .onClick(async () => {
+                if (this.customPrompt.trim()) {
+                    this.plugin.settings.customPrompts[this.actionId] = this.customPrompt.trim();
+                } else {
                     delete this.plugin.settings.customPrompts[this.actionId];
-                    await this.plugin.saveSettings();
-                    this.close();
-                }));
-
-        // Save Button
-        new Setting(buttonContainer)
-            .addButton(btn => btn
-                .setButtonText('Save Custom Prompt')
-                .setCta()
-                .onClick(async () => {
-                    if (this.customPrompt.trim()) {
-                        this.plugin.settings.customPrompts[this.actionId] = this.customPrompt.trim();
-                    } else {
-                        delete this.plugin.settings.customPrompts[this.actionId];
-                    }
-                    await this.plugin.saveSettings();
-                    this.close();
-                }));
+                }
+                await this.plugin.saveSettings();
+                this.close();
+            });
     }
 
     onClose() {
-        const { contentEl } = this;
-        contentEl.empty();
+        this.contentEl.empty();
     }
 }

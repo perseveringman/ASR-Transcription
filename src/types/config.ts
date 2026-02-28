@@ -191,7 +191,7 @@ export const DEFAULT_SETTINGS: PluginSettings = {
     zhipuLLMModel: 'glm-4-flash',
 
     minimaxApiKey: '',
-    minimaxModel: 'MiniMax-M2.1',
+    minimaxModel: 'MiniMax-M2.5',
 
     deepseekApiKey: '',
     deepseekModel: 'deepseek-chat',

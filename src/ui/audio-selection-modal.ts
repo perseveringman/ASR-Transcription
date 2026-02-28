@@ -8,7 +8,7 @@ export class AudioSelectionModal extends FuzzySuggestModal<TFile> {
         super(app);
         this.files = files;
         this.onSelect = onSelect;
-        this.setPlaceholder("Select an audio file to transcribe");
+        this.setPlaceholder('选择要转写的音频文件');
     }
 
     getItems(): TFile[] {

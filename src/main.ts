@@ -66,14 +66,14 @@ export default class ASRPlugin extends Plugin {
         );
 
         // Add Ribbon Icon
-        this.addRibbonIcon('bot', 'Open AI Actions', () => {
+        this.addRibbonIcon('bot', '打开 AI 操作', () => {
             this.activateView();
         });
 
         // Register commands
         this.addCommand({
             id: 'open-ai-sidebar',
-            name: 'Open AI actions sidebar',
+            name: '打开 AI 操作侧边栏',
             callback: () => {
                 this.activateView();
             }
@@ -81,7 +81,7 @@ export default class ASRPlugin extends Plugin {
 
         this.addCommand({
             id: 'open-asr-modal',
-            name: 'Open transcription modal',
+            name: '打开转写窗口',
             callback: () => {
                 new RecordingModal(this.app, this.recorder, this.handleTranscription.bind(this)).open();
             }
@@ -89,7 +89,7 @@ export default class ASRPlugin extends Plugin {
 
         this.addCommand({
             id: 'transcribe-referenced-audio',
-            name: 'Transcribe referenced audio in current note',
+            name: '转写当前笔记中引用的音频',
             checkCallback: (checking: boolean) => {
                 const activeFile = this.app.workspace.getActiveFile();
                 if (!activeFile || activeFile.extension !== 'md') return false;
@@ -98,7 +98,7 @@ export default class ASRPlugin extends Plugin {
 
                 const audioFiles = VaultUtils.getReferencedAudioFiles(this.app, activeFile);
                 if (audioFiles.length === 0) {
-                    new Notice('No audio file references found in current note.');
+                    new Notice('当前笔记中未找到音频文件引用。');
                     return true;
                 }
 
@@ -115,18 +115,18 @@ export default class ASRPlugin extends Plugin {
 
         this.addCommand({
             id: 'start-recording',
-            name: 'Start recording',
+            name: '开始录音',
             callback: () => {
                 void this.recorder.start().catch((err: unknown) => {
                     const message = err instanceof Error ? err.message : String(err);
-                    new Notice(`Failed to start recording: ${message}`);
+                    new Notice(`录音启动失败: ${message}`);
                 });
             }
         });
 
         this.addCommand({
             id: 'stop-recording',
-            name: 'Stop recording',
+            name: '停止录音',
             callback: () => {
                 this.recorder.stop();
             }
@@ -134,7 +134,7 @@ export default class ASRPlugin extends Plugin {
 
         this.addCommand({
             id: 'batch-process-todays-audio',
-            name: 'Batch process today\'s audio notes',
+            name: '批量处理今日音频笔记',
             callback: () => {
                 void this.batchManager.processTodaysAudioFiles();
             }
@@ -142,7 +142,7 @@ export default class ASRPlugin extends Plugin {
 
         this.addCommand({
             id: 'analyze-url-at-cursor',
-            name: 'Analyze URL at cursor',
+            name: '分析光标处的链接',
             editorCallback: async (editor: Editor) => {
                 await this.handleUrlAtCursor(editor);
             }
@@ -150,7 +150,7 @@ export default class ASRPlugin extends Plugin {
 
         this.addCommand({
             id: 'beautify-current-note',
-            name: 'Beautify current note formatting',
+            name: '美化当前笔记格式',
             checkCallback: (checking: boolean) => {
                 const activeFile = this.app.workspace.getActiveFile();
                 if (!activeFile || activeFile.extension !== 'md') return false;
@@ -185,7 +185,7 @@ export default class ASRPlugin extends Plugin {
                 if (file instanceof TFile && this.isAudioFile(file)) {
                     menu.addItem((item) => {
                         item
-                            .setTitle('Transcribe audio')
+                            .setTitle('转写音频')
                             .setIcon('mic')
                             .onClick(() => {
                                 void this.handleAudioFileTranscription(file);
@@ -233,7 +233,7 @@ export default class ASRPlugin extends Plugin {
      */
     async handleUrlAtCursor(editor: Editor) {
         if (!this.settings.enableArticleReader) {
-            new Notice('Article reader is disabled. Enable it in settings.');
+            new Notice('文章阅读器未启用，请在设置中开启。');
             return;
         }
 
@@ -242,7 +242,7 @@ export default class ASRPlugin extends Plugin {
         const url = this.articleReaderManager.extractUrl(line);
 
         if (!url) {
-            new Notice('No URL found on current line.');
+            new Notice('当前行未找到 URL。');
             return;
         }
 
@@ -288,16 +288,16 @@ export default class ASRPlugin extends Plugin {
             const leaf = this.app.workspace.getLeaf(true);
             await leaf.openFile(noteFile);
             
-            new Notice(`Transcription of ${file.name} complete!`);
+            new Notice(`转写完成: ${file.name}`);
         } catch (err: unknown) {
             const message = err instanceof Error ? err.message : String(err);
-            new Notice(`Transcription of ${file.name} failed: ${message}`);
+            new Notice(`转写失败: ${file.name} — ${message}`);
             console.error('ASR Plugin error:', err);
         }
     }
 
     async handleTranscription(audio: Blob | File, styleId?: string) {
-        const notice = new Notice('Processing audio...', 0);
+        const notice = new Notice('处理音频中...', 0);
 
         try {
             // 1. Save the audio file if it's a new recording (Blob)
@@ -319,29 +319,29 @@ export default class ASRPlugin extends Plugin {
                 const path = folder === '/' ? fileName : `${folder}/${fileName}`;
                 const arrayBuffer = await audio.arrayBuffer();
                 audioFile = await this.app.vault.createBinary(path, arrayBuffer);
-                new Notice(`Audio saved: ${fileName}`);
+                new Notice(`音频已保存: ${fileName}`);
             }
 
             // 2. Process transcription using Manager
             const fullText = await this.transcriptionManager.transcribe(audio, this.app);
             
-            // 3. Process AI Polishing using Manager
+            // 3. AI 润色
             let aiText = '';
             try {
                 // Pass the selected style ID if available
                 aiText = await this.llmManager.polish(fullText, styleId);
             } catch (err: unknown) {
                  const message = err instanceof Error ? err.message : String(err);
-                 new Notice(`AI Polishing failed: ${message}`, 5000);
+                 new Notice(`AI 润色失败: ${message}`, 5000);
             }
 
             await this.textInserter.insert(fullText, audioFile || undefined, aiText);
             notice.hide();
-            new Notice('Transcription complete!');
+            new Notice('转写完成！');
         } catch (err: unknown) {
             notice.hide();
             const message = err instanceof Error ? err.message : String(err);
-            new Notice(`Transcription failed: ${message}`);
+            new Notice(`转写失败: ${message}`);
             console.error('ASR Plugin error:', err);
         }
     }
@@ -355,14 +355,14 @@ export default class ASRPlugin extends Plugin {
                 aiText = await this.llmManager.polish(fullText);
             } catch (err: unknown) {
                  const message = err instanceof Error ? err.message : String(err);
-                 new Notice(`AI Polishing failed: ${message}`, 5000);
+                 new Notice(`AI 润色失败: ${message}`, 5000);
             }
 
             await this.textInserter.insert(fullText, file, aiText);
-            new Notice(`Transcription of ${file.name} complete!`);
+            new Notice(`转写完成: ${file.name}`);
         } catch (err: unknown) {
             const message = err instanceof Error ? err.message : String(err);
-            new Notice(`Transcription of ${file.name} failed: ${message}`);
+            new Notice(`转写失败: ${file.name} — ${message}`);
             console.error('ASR Plugin error:', err);
         }
     }
@@ -371,18 +371,18 @@ export default class ASRPlugin extends Plugin {
      * Handle beautifying the current note's formatting without changing text content
      */
     async handleBeautifyNote(file: TFile) {
-        const notice = new Notice('Beautifying note...', 0);
+        const notice = new Notice('笔记美化中...', 0);
         
         try {
             const content = await this.app.vault.read(file);
             const beautified = await this.llmManager.beautifyNote(content);
             await this.app.vault.modify(file, beautified);
             notice.hide();
-            new Notice('Note beautified!');
+            new Notice('笔记美化完成！');
         } catch (err: unknown) {
             notice.hide();
             const message = err instanceof Error ? err.message : String(err);
-            new Notice(`Beautify failed: ${message}`);
+            new Notice(`笔记美化失败: ${message}`);
             console.error('ASR Plugin error:', err);
         }
     }

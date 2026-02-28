@@ -62,7 +62,7 @@ export class TextInserter {
         }
 
         if (aiPolishedText) {
-            result += `\n\n> [!AI] AI Polish\n> ${aiPolishedText.trim()}`;
+            result += `\n\n> [!AI] AI润色\n> ${aiPolishedText.trim()}`;
         }
 
         if (audioFile) {

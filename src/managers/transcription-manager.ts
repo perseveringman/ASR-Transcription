@@ -1,4 +1,4 @@
-import { Notice, TFile } from 'obsidian';
+import { Notice, TFile, Platform } from 'obsidian';
 import { PluginSettings } from '../types/config';
 import { TranscriptionService } from '../types/transcription';
 import { TranscriptionServiceFactory } from '../services/transcription/factory';
@@ -22,7 +22,7 @@ export class TranscriptionManager {
      */
     async transcribe(audio: Blob | TFile, app: any): Promise<string> {
         const constraints = this.service.getConstraints();
-        const notice = new Notice(`Preparing transcription...`, 0);
+        const notice = new Notice(`准备转写中...`, 0);
 
         try {
             let arrayBuffer: ArrayBuffer;
@@ -43,41 +43,51 @@ export class TranscriptionManager {
                 }
             }
             
-            // Check duration for chunking
-            const AudioContextClass = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
-            const audioContext = new AudioContextClass();
-            const audioBuffer = await audioContext.decodeAudioData(arrayBuffer.slice(0)); 
-            const duration = audioBuffer.duration;
-            await audioContext.close();
-
             let fullText = '';
 
-            // Chunk if duration or size exceeds limits
-            const needsChunking = duration > constraints.maxDurationSeconds || blob.size > constraints.maxFileSizeBytes;
-
-            if (needsChunking) {
-                notice.setMessage(`Splitting audio into chunks...`);
-                // Use the smaller of the two constraints to be safe
-                const chunkDuration = Math.min(constraints.maxDurationSeconds, 30); 
-                const chunks = await AudioConverter.splitAndConvert(blob, chunkDuration);
-                
-                for (let i = 0; i < chunks.length; i++) {
-                    notice.setMessage(`Transcribing: chunk ${i + 1}/${chunks.length}...`);
-                    const result = await this.service.transcribe(chunks[i]);
-                    fullText += (fullText ? ' ' : '') + result.text.trim();
-                }
-            } else {
-                let audioToUpload = blob;
-                
-                // Convert m4a if needed (some providers might strict check, but usually handled by service constraints)
-                // For now, keep the m4a conversion logic if it was critical, but ideally service should declare supported formats.
-                if (extension === 'm4a') {
-                    notice.setMessage(`Converting to WAV...`);
-                    audioToUpload = await AudioConverter.convertToWav(blob);
+            // On mobile, skip AudioContext decoding to avoid memory crashes.
+            // Send the original audio directly — ASR services (Zhipu, Volcengine) support m4a/mp3 natively.
+            if (Platform.isMobile) {
+                // Only chunk by file size on mobile (no duration check without AudioContext)
+                if (blob.size > constraints.maxFileSizeBytes) {
+                    throw new Error(`Audio file too large (${(blob.size / 1024 / 1024).toFixed(1)}MB). Max: ${(constraints.maxFileSizeBytes / 1024 / 1024).toFixed(0)}MB`);
                 }
 
-                const result = await this.service.transcribe(audioToUpload);
+                notice.setMessage(`转写中...`);
+                const result = await this.service.transcribe(blob);
                 fullText = result.text;
+            } else {
+                // Desktop: full AudioContext-based processing with chunking support
+                const AudioContextClass = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+                const audioContext = new AudioContextClass();
+                const audioBuffer = await audioContext.decodeAudioData(arrayBuffer.slice(0)); 
+                const duration = audioBuffer.duration;
+                await audioContext.close();
+
+                // Chunk if duration or size exceeds limits
+                const needsChunking = duration > constraints.maxDurationSeconds || blob.size > constraints.maxFileSizeBytes;
+
+                if (needsChunking) {
+                    notice.setMessage(`正在分割音频...`);
+                    const chunkDuration = Math.min(constraints.maxDurationSeconds, 30); 
+                    const chunks = await AudioConverter.splitAndConvert(blob, chunkDuration);
+                    
+                    for (let i = 0; i < chunks.length; i++) {
+                        notice.setMessage(`转写中：第 ${i + 1}/${chunks.length} 段...`);
+                        const result = await this.service.transcribe(chunks[i]);
+                        fullText += (fullText ? ' ' : '') + result.text.trim();
+                    }
+                } else {
+                    let audioToUpload = blob;
+                    
+                    if (extension === 'm4a') {
+                        notice.setMessage(`正在转换格式...`);
+                        audioToUpload = await AudioConverter.convertToWav(blob);
+                    }
+
+                    const result = await this.service.transcribe(audioToUpload);
+                    fullText = result.text;
+                }
             }
 
             notice.hide();

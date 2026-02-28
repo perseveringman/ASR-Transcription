@@ -186,3 +186,146 @@
 .asr-thinking-customized-btn {
     color: var(--text-accent);
 }
+
+/* ── Prompt Edit Modal ─────────────────────────────────────────── */
+.prompt-edit-modal {
+    width: min(680px, 90vw) !important;
+}
+
+.prompt-edit-modal .modal-content {
+    padding: 24px 28px 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+}
+
+/* Header */
+.pem-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 20px;
+    padding-bottom: 14px;
+    border-bottom: 1px solid var(--background-modifier-border);
+}
+
+.pem-tag {
+    font-size: 0.7em;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--text-on-accent);
+    background: var(--interactive-accent);
+    border-radius: 4px;
+    padding: 2px 8px;
+    white-space: nowrap;
+}
+
+.pem-title {
+    font-size: 1.05em;
+    font-weight: 600;
+    color: var(--text-normal);
+    margin: 0;
+}
+
+/* Sections */
+.pem-section {
+    margin-bottom: 18px;
+}
+
+.pem-label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.82em;
+    font-weight: 600;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-bottom: 6px;
+}
+
+.pem-label-badge {
+    font-size: 0.75em;
+    font-weight: 500;
+    letter-spacing: 0;
+    text-transform: none;
+    padding: 1px 6px;
+    border-radius: 10px;
+}
+
+.pem-label-badge--readonly {
+    background: var(--background-modifier-border);
+    color: var(--text-faint);
+}
+
+.pem-label-badge--editable {
+    background: color-mix(in srgb, var(--interactive-accent) 15%, transparent);
+    color: var(--interactive-accent);
+}
+
+.pem-hint {
+    font-size: 0.82em;
+    color: var(--text-faint);
+    margin: 0 0 6px;
+}
+
+/* Textareas */
+.pem-textarea {
+    width: 100%;
+    box-sizing: border-box;
+    resize: vertical;
+    font-size: 0.875em;
+    font-family: var(--font-monospace);
+    line-height: 1.6;
+    padding: 10px 12px;
+    border-radius: 6px;
+    border: 1px solid var(--background-modifier-border);
+    outline: none;
+    transition: border-color 0.15s;
+}
+
+.pem-textarea--readonly {
+    background: var(--background-secondary);
+    color: var(--text-muted);
+    cursor: default;
+    opacity: 0.85;
+}
+
+.pem-textarea--editable {
+    background: var(--background-primary);
+    color: var(--text-normal);
+}
+
+.pem-textarea--editable:focus {
+    border-color: var(--interactive-accent);
+    box-shadow: 0 0 0 2px color-mix(in srgb, var(--interactive-accent) 18%, transparent);
+}
+
+/* Footer */
+.pem-footer {
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    gap: 10px;
+    padding-top: 16px;
+    border-top: 1px solid var(--background-modifier-border);
+    margin-top: 4px;
+}
+
+.pem-btn-reset {
+    background: transparent !important;
+    color: var(--text-muted) !important;
+    border: 1px solid var(--background-modifier-border) !important;
+    box-shadow: none !important;
+}
+
+.pem-btn-reset:hover {
+    color: var(--text-error) !important;
+    border-color: var(--text-error) !important;
+    background: color-mix(in srgb, var(--text-error) 8%, transparent) !important;
+}
+
+.pem-btn-save {
+    min-width: 72px;
+}
