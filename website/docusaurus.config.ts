@@ -4,7 +4,7 @@ import type * as Preset from '@docusaurus/preset-classic';
 
 const config: Config = {
   title: 'Aura',
-  tagline: '让每一段声音，都成为可检索的知识',
+  tagline: 'Obsidian AI 认知引擎 — 让每一个想法都能生长',
   favicon: 'img/favicon.ico',
 
   url: 'https://perseveringman.github.io',

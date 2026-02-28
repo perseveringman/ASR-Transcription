@@ -19,6 +19,9 @@ function HomepageHeader() {
           <Link className="button button--secondary button--lg" to="/docs/installation">
             快速开始 →
           </Link>
+          <Link className="button button--outline button--secondary button--lg" to="/docs/">
+            了解更多
+          </Link>
         </div>
       </div>
     </header>
@@ -32,23 +35,35 @@ type FeatureItem = {
 
 const FeatureList: FeatureItem[] = [
   {
-    title: '语音转写',
-    description: <>录制音频或转写已有文件，支持智谱 AI 和火山引擎豆包，长音频自动分片处理。</>,
+    title: '声音变文字',
+    description: (
+      <>
+        录制音频或转写已有文件，支持智谱 AI 和火山引擎豆包。长音频自动分片，最长支持 4 小时会议录音。
+      </>
+    ),
   },
   {
-    title: 'AI 润色',
-    description: <>自动清除口语化表达，生成结构清晰、标点正确的书面内容。</>,
+    title: '文字变知识',
+    description: (
+      <>
+        AI 润色将口语稿变为书面文；20+ 种思维动作——第一性原理、六顶思考帽、每日复盘——让笔记产生深度洞见。
+      </>
+    ),
   },
   {
-    title: '思维动作',
-    description: <>20+ 种认知模型，包括第一性原理、每日复盘、核心摘要，让笔记产生深度洞见。</>,
+    title: '知识可生长',
+    description: (
+      <>
+        批量处理整个文件夹或标签，自动生成带反向链接的洞见笔记，让你的知识库随时间持续积累。
+      </>
+    ),
   },
 ];
 
 function Feature({title, description}: FeatureItem) {
   return (
     <div className={clsx('col col--4')}>
-      <div className="text--center padding-horiz--md">
+      <div className="text--center padding-horiz--md padding-vert--lg">
         <Heading as="h3">{title}</Heading>
         <p>{description}</p>
       </div>
@@ -58,7 +73,7 @@ function Feature({title, description}: FeatureItem) {
 
 export default function Home(): ReactNode {
   return (
-    <Layout description="让每一段声音，都成为可检索的知识">
+    <Layout description="Obsidian AI 认知引擎：语音转写、AI 润色、思维动作，让每一个想法都能生长">
       <HomepageHeader />
       <main>
         <section className={styles.features}>

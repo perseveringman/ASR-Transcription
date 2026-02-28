@@ -6,7 +6,8 @@ sidebar_position: 99
 
 ## v1.1.0
 
-- 新增文档站，提供中文使用说明（GitHub Pages）
+- 品牌升级：插件更名为 **Aura**，定位从 STT 工具扩展为 AI 认知引擎
+- 新增中文文档站（GitHub Pages）
 
 ## v1.0.6
 
