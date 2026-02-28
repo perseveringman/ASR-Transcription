@@ -16,6 +16,6 @@ ASR Transcription 是一个为 [Obsidian](https://obsidian.md/) 打造的 AI 语
 
 ## 快速导航
 
-- [安装与快速入门](./installation) — 5 分钟完成配置
-- [功能介绍](./features/transcription) — 了解所有功能
-- [Provider 配置](./providers/overview) — 配置 API Key
+- [安装与快速入门](/docs/installation) — 5 分钟完成配置
+- [功能介绍](/docs/features/transcription) — 了解所有功能
+- [Provider 配置](/docs/providers/overview) — 配置 API Key
