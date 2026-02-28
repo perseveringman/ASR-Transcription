@@ -1,0 +1,11 @@
+{
+  "index": {
+    "title": "首页",
+    "type": "page",
+    "display": "hidden"
+  },
+  "installation": "安装与快速入门",
+  "features": "功能介绍",
+  "providers": "Provider 配置",
+  "changelog": "更新日志"
+}
