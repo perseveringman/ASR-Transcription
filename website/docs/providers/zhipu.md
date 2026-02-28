@@ -14,7 +14,7 @@ sidebar_position: 2
 
 1. 访问 [智谱 AI 开放平台](https://open.bigmodel.cn/) 注册并登录。
 2. 在控制台获取 **API Key**。
-3. 打开 Obsidian → 设置 → **ASR Transcription** → 转录服务商 → **智谱 AI**。
+3. 打开 Obsidian → 设置 → **Aura** → 转录服务商 → **智谱 AI**。
 4. 粘贴 API Key 并保存。
 
 ## 注意事项

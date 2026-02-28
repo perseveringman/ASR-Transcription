@@ -5,7 +5,7 @@ slug: /
 
 # 简介
 
-ASR Transcription 是一个为 [Obsidian](https://obsidian.md/) 打造的 AI 语音转文字插件，让每一段声音都成为可检索的知识。
+Aura 是一个为 [Obsidian](https://obsidian.md/) 打造的 AI 语音转文字插件，让每一段声音都成为可检索的知识。
 
 ## 核心能力
 

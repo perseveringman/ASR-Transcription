@@ -24,4 +24,4 @@ sidebar_position: 2
 
 ## 配置方法
 
-打开 Obsidian → 设置 → **ASR Transcription** → **AI 润色**，配置你的 LLM 服务商和自定义提示词。
+打开 Obsidian → 设置 → **Aura** → **AI 润色**，配置你的 LLM 服务商和自定义提示词。

@@ -17,8 +17,8 @@ export class OpenRouterLLMService implements LLMService {
         // On iOS, system networking may strip or reject custom Referer headers,
         // causing 403 errors. Only include them on desktop.
         if (!Platform.isMobile) {
-            headers['HTTP-Referer'] = 'https://github.com/obsidian-plugins/asr-transcription';
-            headers['X-Title'] = 'Obsidian ASR Plugin';
+            headers['HTTP-Referer'] = 'https://github.com/perseveringman/Aura';
+            headers['X-Title'] = 'Aura for Obsidian';
         }
         return headers;
     }

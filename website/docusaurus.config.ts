@@ -3,7 +3,7 @@ import type {Config} from '@docusaurus/types';
 import type * as Preset from '@docusaurus/preset-classic';
 
 const config: Config = {
-  title: 'ASR Transcription',
+  title: 'Aura',
   tagline: '让每一段声音，都成为可检索的知识',
   favicon: 'img/favicon.ico',
 
@@ -41,9 +41,9 @@ const config: Config = {
 
   themeConfig: {
     navbar: {
-      title: 'ASR Transcription',
+      title: 'Aura',
       logo: {
-        alt: 'ASR Transcription Logo',
+        alt: 'Aura Logo',
         src: 'img/logo.svg',
       },
       items: [
@@ -84,7 +84,7 @@ const config: Config = {
           ],
         },
       ],
-      copyright: `Copyright © ${new Date().getFullYear()} ASR Transcription. Built with Docusaurus.`,
+      copyright: `Copyright © ${new Date().getFullYear()} Aura. Built with Docusaurus.`,
     },
     prism: {
       theme: prismThemes.github,

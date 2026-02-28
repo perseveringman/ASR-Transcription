@@ -18,7 +18,7 @@ import { ArticleReaderManager } from './managers/article-reader-manager';
 import { AISidebarView, VIEW_TYPE_AI_SIDEBAR } from './ui/sidebar/sidebar-view';
 import { hasConfiguredSetup } from './ui/settings/settings-state';
 
-export default class ASRPlugin extends Plugin {
+export default class AuraPlugin extends Plugin {
     settings!: PluginSettings;
     recorder!: AudioRecorder;
     textInserter!: TextInserter;

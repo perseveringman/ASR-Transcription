@@ -16,7 +16,7 @@ sidebar_position: 3
 2. 搜索"语音识别"并开通服务，获取 **App ID**。
 3. 在控制台"API Key 管理"中获取 **Access Token**。
 4. 确保已获得 `volc.seedasr.auc`（豆包录音文件识别模型 2.0 标准版）的调用权限。
-5. 打开 Obsidian → 设置 → **ASR Transcription** → 转录服务商 → **火山引擎**。
+5. 打开 Obsidian → 设置 → **Aura** → 转录服务商 → **火山引擎**。
 6. 填入 **App ID** 和 **Access Token**，保存。
 
 ## 优势
