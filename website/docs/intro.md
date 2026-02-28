@@ -1,47 +1,21 @@
 ---
 sidebar_position: 1
+slug: /
 ---
 
-# Tutorial Intro
+# 简介
 
-Let's discover **Docusaurus in less than 5 minutes**.
+ASR Transcription 是一个为 [Obsidian](https://obsidian.md/) 打造的 AI 语音转文字插件，让每一段声音都成为可检索的知识。
 
-## Getting Started
+## 核心能力
 
-Get started by **creating a new site**.
+- **语音转写**：录制音频或转写已有音频文件，支持智谱 AI 和火山引擎豆包
+- **AI 润色**：自动清除口语化表达，生成结构清晰的文本
+- **思维动作**：20+ 种认知模型（第一性原理、苏格拉底提问、每日复盘等）
+- **批量处理**：对整个文件夹或标签下的笔记批量执行思维动作
 
-Or **try Docusaurus immediately** with **[docusaurus.new](https://docusaurus.new)**.
+## 快速导航
 
-### What you'll need
-
-- [Node.js](https://nodejs.org/en/download/) version 20.0 or above:
-  - When installing Node.js, you are recommended to check all checkboxes related to dependencies.
-
-## Generate a new site
-
-Generate a new Docusaurus site using the **classic template**.
-
-The classic template will automatically be added to your project after you run the command:
-
-```bash
-npm init docusaurus@latest my-website classic
-```
-
-You can type this command into Command Prompt, Powershell, Terminal, or any other integrated terminal of your code editor.
-
-The command also installs all necessary dependencies you need to run Docusaurus.
-
-## Start your site
-
-Run the development server:
-
-```bash
-cd my-website
-npm run start
-```
-
-The `cd` command changes the directory you're working with. In order to work with your newly created Docusaurus site, you'll need to navigate the terminal there.
-
-The `npm run start` command builds your website locally and serves it through a development server, ready for you to view at http://localhost:3000/.
-
-Open `docs/intro.md` (this page) and edit some lines: the site **reloads automatically** and displays your changes.
+- [安装与快速入门](./installation) — 5 分钟完成配置
+- [功能介绍](./features/transcription) — 了解所有功能
+- [Provider 配置](./providers/overview) — 配置 API Key
