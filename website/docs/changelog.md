@@ -4,6 +4,10 @@ sidebar_position: 99
 
 # 更新日志
 
+## v1.1.0
+
+- 新增文档站，提供中文使用说明（GitHub Pages）
+
 ## v1.0.6
 
 - 自动转写：vault 启动时自动扫描音频并转写
