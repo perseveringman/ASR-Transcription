@@ -8,10 +8,10 @@ const config: Config = {
   favicon: 'img/favicon.ico',
 
   url: 'https://perseveringman.github.io',
-  baseUrl: '/ASR-Transcription/',
+  baseUrl: '/Aura/',
 
   organizationName: 'perseveringman',
-  projectName: 'ASR-Transcription',
+  projectName: 'Aura',
   deploymentBranch: 'gh-pages',
   trailingSlash: false,
 
@@ -59,7 +59,7 @@ const config: Config = {
           position: 'left',
         },
         {
-          href: 'https://github.com/perseveringman/ASR-Transcription',
+          href: 'https://github.com/perseveringman/Aura',
           label: 'GitHub',
           position: 'right',
         },
@@ -79,7 +79,7 @@ const config: Config = {
         {
           title: '更多',
           items: [
-            {label: 'GitHub', href: 'https://github.com/perseveringman/ASR-Transcription'},
+            {label: 'GitHub', href: 'https://github.com/perseveringman/Aura'},
             {label: '更新日志', to: '/docs/changelog'},
           ],
         },
